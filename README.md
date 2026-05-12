@@ -6,7 +6,10 @@ Mnemo catches screenshots, links, copied text, chat snippets, notes, ideas,
 and reminders — then classifies, tags, and remembers them entirely on-device.
 No cloud AI. No backend. No accounts. Nothing leaves your phone.
 
-> 🌐 **Landing page:** [https://prakash66958-netizen.github.io/mnemo/](https://prakash66958-netizen.github.io/mnemo/) · source in [`docs/`](./docs)
+> 🌐 **Landing pages:**
+> - Firebase Hosting: [https://mnemo-5d13a.web.app/](https://mnemo-5d13a.web.app/)
+> - GitHub Pages: [https://prakash66958-netizen.github.io/mnemo/](https://prakash66958-netizen.github.io/mnemo/)
+> - Source in [`docs/`](./docs)
 
 ---
 
