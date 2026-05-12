@@ -6,8 +6,7 @@ Mnemo catches screenshots, links, copied text, chat snippets, notes, ideas,
 and reminders — then classifies, tags, and remembers them entirely on-device.
 No cloud AI. No backend. No accounts. Nothing leaves your phone.
 
-> 🌐 **Landing page:** [website](./website) · ships at `/website/index.html`
-> once deployed.
+> 🌐 **Landing page:** [https://prakash66958-netizen.github.io/mnemo/](https://prakash66958-netizen.github.io/mnemo/) · source in [`docs/`](./docs)
 
 ---
 
@@ -66,8 +65,10 @@ No cloud AI. No backend. No accounts. Nothing leaves your phone.
 │   │   └── shared/   # Riverpod providers
 │   └── widgets/      # reusable UI (MemoryCard, CategoryBadge, MnemoNavBar, ...)
 ├── docs/
-│   └── design/       # HTML design previews
-├── website/          # static landing page (HTML/CSS/JS)
+│   ├── index.html    # landing page (served by GitHub Pages)
+│   ├── styles.css
+│   ├── script.js
+│   └── design/       # HTML design previews for the app UI
 ├── web/              # Flutter Web scaffold
 └── test/             # widget + unit tests
 ```
