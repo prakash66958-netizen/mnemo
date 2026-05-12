@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "getmnemo",
     "public": "docs",
     "ignore": [
       "firebase.json",

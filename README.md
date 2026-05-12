@@ -7,7 +7,7 @@ and reminders — then classifies, tags, and remembers them entirely on-device.
 No cloud AI. No backend. No accounts. Nothing leaves your phone.
 
 > 🌐 **Landing pages:**
-> - Firebase Hosting: [https://mnemo-5d13a.web.app/](https://mnemo-5d13a.web.app/)
+> - Firebase Hosting: [https://getmnemo.web.app/](https://getmnemo.web.app/)
 > - GitHub Pages: [https://prakash66958-netizen.github.io/mnemo/](https://prakash66958-netizen.github.io/mnemo/)
 > - Source in [`docs/`](./docs)
 
