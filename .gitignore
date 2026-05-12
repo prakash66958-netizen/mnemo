@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# macOS / Linux / Windows junk
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.pyc
+
+# ---------------------------------------------------------------------------
+# IDE / editor
+# ---------------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.history
+.atom/
+.swiftpm/
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart
+# ---------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+.packages
+/build/
+build/
+coverage/
+doc/api/
+pubspec_overrides.yaml
+
+# Obfuscation / symbolication artifacts
+app.*.symbols
+app.*.map.json
+
+# ---------------------------------------------------------------------------
+# Android
+# ---------------------------------------------------------------------------
+**/android/.gradle/
+**/android/.kotlin/
+**/android/captures/
+**/android/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/app/google-services.json
+**/android/key.properties
+**/*.keystore
+**/*.jks
+**/GeneratedPluginRegistrant.java
+
+# ---------------------------------------------------------------------------
+# iOS (kept for future)
+# ---------------------------------------------------------------------------
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GoogleService-Info.plist
+**/ios/Pods/
+
+# ---------------------------------------------------------------------------
+# Secrets / environment
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand indigo, used as the solid fallback colour for the adaptive
+         launcher icon background on tools/launchers that don't render the
+         gradient vector (e.g. monochrome icon previews). Matches
+         AppTheme._seed in lib/core/theme/app_theme.dart. -->
+    <color name="ic_launcher_background">#4F46E5</color>
+</resources>

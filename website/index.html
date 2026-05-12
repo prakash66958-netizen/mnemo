@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mnemo — Your private second brain</title>
+<meta name="description" content="An offline-first universal memory inbox. Saves everything. Runs on-device. No cloud. No accounts."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+<!-- Animated background grid -->
+<div class="bg-grid"></div>
+<div class="bg-noise"></div>
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+<div class="bg-orb orb-3"></div>
+
+<!-- ========== NAV ========== -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="url(#g1)" stroke-width="1.5"/><path d="M10 20V12L16 16L22 12V20" stroke="url(#g1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#A5B4FC"/><stop offset="1" stop-color="#6366F1"/></linearGradient></defs></svg>
+      </span>
+      <span class="brand-text">Mnemo</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#habits">Habits</a>
+      <a href="#screens">Screens</a>
+      <a href="#download">Download</a>
+    </div>
+    <a href="https://github.com/prakash66958-netizen/mnemo" target="_blank" rel="noopener" class="nav-cta">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      Star on GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="eyebrow">
+        <span class="dot-pulse"></span>
+        <span>Offline-first · Android · v1.0</span>
+      </div>
+      <h1 class="hero-title">
+        Your private<br/>
+        <span class="serif">second brain</span><span class="accent-dot">.</span>
+      </h1>
+      <p class="hero-sub">
+        Mnemo catches every screenshot, promise, link, and fleeting thought — then classifies, tags, and remembers them on-device. No cloud. No accounts. Nothing leaves your phone.
+      </p>
+      <div class="hero-ctas">
+        <a href="#download" class="btn btn-primary">
+          <span class="material-symbols-rounded">download</span>
+          Download APK
+          <span class="btn-ver">1.0</span>
+        </a>
+        <a href="https://github.com/prakash66958-netizen/mnemo" target="_blank" rel="noopener" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View source
+        </a>
+      </div>
+      <div class="hero-facts">
+        <div class="fact"><span class="fact-num">0</span><span class="fact-lbl">cloud calls</span></div>
+        <div class="fact"><span class="fact-num">12</span><span class="fact-lbl">smart categories</span></div>
+        <div class="fact"><span class="fact-num">∞</span><span class="fact-lbl">daily habits tracked</span></div>
+      </div>
+    </div>
+
+    <!-- Floating cards stage -->
+    <div class="hero-right">
+      <div class="stage">
+        <!-- Center phone -->
+        <div class="phone-hero">
+          <div class="phone-hero-screen">
+            <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+            <div class="mini-appbar">
+              <div>
+                <div class="mini-title">Inbox</div>
+                <div class="mini-sub">Your private second brain</div>
+              </div>
+              <div class="mini-icon"><span class="material-symbols-rounded">search</span></div>
+            </div>
+            <div class="mini-body">
+              <div class="mini-chip-row">
+                <span class="mini-chip active">All</span>
+                <span class="mini-chip">Today</span>
+                <span class="mini-chip">Pinned</span>
+              </div>
+              <div class="mini-section"><span class="material-symbols-rounded">push_pin</span>Pinned</div>
+              <div class="mini-card pinned">
+                <div class="mini-card-head">
+                  <span class="material-symbols-rounded">handshake</span>
+                  <span>Promise</span>
+                  <span class="mini-time">2h</span>
+                </div>
+                <div class="mini-card-text">"I'll send Arjun the deck tomorrow morning before the review."</div>
+                <div class="mini-card-row">
+                  <span class="mini-tag-bell"><span class="material-symbols-rounded">alarm</span>Tue 9:00</span>
+                </div>
+              </div>
+              <div class="mini-section">Today</div>
+              <div class="mini-card">
+                <div class="mini-badge" style="background:#3B82F6"><span class="material-symbols-rounded">link</span></div>
+                <div class="mini-card-col">
+                  <div class="mini-card-head"><span>Link</span><span class="mini-time">11:24</span></div>
+                  <div class="mini-url">arxiv.org/abs/2401.10515</div>
+                  <div class="mini-card-text small">Mixture of Depths — dynamic compute in transformers</div>
+                </div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-thumb"><span class="material-symbols-rounded">image</span></div>
+                <div class="mini-card-col">
+                  <div class="mini-card-head"><span>Screenshot</span><span class="mini-time">10:02</span></div>
+                  <div class="mini-card-text small">OCR: "Flight IX 2042 · Gate B12 · Seat 22A"</div>
+                </div>
+              </div>
+            </div>
+            <div class="mini-fab"><span class="material-symbols-rounded">add</span></div>
+          </div>
+        </div>
+
+        <!-- Floating cards around phone -->
+        <div class="float float-1">
+          <div class="f-badge" style="background:#F59E0B"><span class="material-symbols-rounded">handshake</span></div>
+          <div>
+            <div class="f-label">Promise detected</div>
+            <div class="f-text">"Kal bhej dunga"</div>
+            <div class="f-meta"><span class="material-symbols-rounded">alarm</span>Tomorrow · 9:00</div>
+          </div>
+        </div>
+        <div class="float float-2">
+          <div class="f-badge" style="background:#06B6D4"><span class="material-symbols-rounded">menu_book</span></div>
+          <div>
+            <div class="f-label">Read Later</div>
+            <div class="f-text">arxiv.org/abs/2401.10515</div>
+          </div>
+        </div>
+        <div class="float float-3">
+          <div class="f-badge" style="background:#EAB308"><span class="material-symbols-rounded">lightbulb</span></div>
+          <div>
+            <div class="f-label">Idea</div>
+            <div class="f-text">Weekly digest, on-device only</div>
+          </div>
+        </div>
+        <div class="float float-4">
+          <div class="f-badge" style="background:#EC4899"><span class="material-symbols-rounded">shopping_bag</span></div>
+          <div>
+            <div class="f-label">Shopping</div>
+            <div class="f-text">milk, eggs, coffee, sourdough</div>
+          </div>
+        </div>
+        <div class="float float-5">
+          <div class="f-badge" style="background:#10B981"><span class="material-symbols-rounded">check_circle</span></div>
+          <div>
+            <div class="f-label">Task</div>
+            <div class="f-text">Submit expense report</div>
+          </div>
+        </div>
+        <div class="float float-6">
+          <div class="f-badge" style="background:#14B8A6"><span class="material-symbols-rounded">task_alt</span></div>
+          <div>
+            <div class="f-label">Habit · 🔥 6</div>
+            <div class="f-text">💧 Drink water</div>
+            <div class="f-meta" style="color:#6EE7B7"><span class="material-symbols-rounded">local_fire_department</span>6-day streak</div>
+          </div>
+        </div>
+
+        <!-- Decorative lines -->
+        <svg class="stage-lines" viewBox="0 0 600 600" fill="none" aria-hidden="true">
+          <circle cx="300" cy="300" r="220" stroke="url(#sg)" stroke-width="1" stroke-dasharray="2 6" opacity="0.3"/>
+          <circle cx="300" cy="300" r="160" stroke="url(#sg)" stroke-width="1" stroke-dasharray="2 6" opacity="0.2"/>
+          <defs><linearGradient id="sg" x1="0" y1="0" x2="600" y2="600"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticker -->
+  <div class="ticker">
+    <div class="ticker-track">
+      <span>Screenshots</span><span class="sep">·</span>
+      <span>Chat snippets</span><span class="sep">·</span>
+      <span>Promises</span><span class="sep">·</span>
+      <span>Daily habits</span><span class="sep">·</span>
+      <span>Links</span><span class="sep">·</span>
+      <span>Ideas</span><span class="sep">·</span>
+      <span>Shopping lists</span><span class="sep">·</span>
+      <span>Reminders</span><span class="sep">·</span>
+      <span>Streaks</span><span class="sep">·</span>
+      <span>Receipts</span><span class="sep">·</span>
+      <span>Meeting notes</span><span class="sep">·</span>
+      <span>Boarding passes</span><span class="sep">·</span>
+      <span>Screenshots</span><span class="sep">·</span>
+      <span>Chat snippets</span><span class="sep">·</span>
+      <span>Promises</span><span class="sep">·</span>
+      <span>Daily habits</span><span class="sep">·</span>
+      <span>Links</span><span class="sep">·</span>
+      <span>Ideas</span><span class="sep">·</span>
+      <span>Shopping lists</span><span class="sep">·</span>
+      <span>Reminders</span><span class="sep">·</span>
+      <span>Streaks</span><span class="sep">·</span>
+      <span>Receipts</span><span class="sep">·</span>
+      <span>Meeting notes</span><span class="sep">·</span>
+      <span>Boarding passes</span><span class="sep">·</span>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PROBLEM ========== -->
+<section class="problem">
+  <div class="wrap">
+    <div class="kicker">The problem</div>
+    <h2 class="section-title">Your memory is scattered across <span class="line-through">47</span> apps.</h2>
+    <div class="scatter">
+      <div class="scatter-item">Screenshots folder</div>
+      <div class="scatter-item">WhatsApp saved</div>
+      <div class="scatter-item">Notes app</div>
+      <div class="scatter-item">Browser tabs</div>
+      <div class="scatter-item">Email drafts</div>
+      <div class="scatter-item">Slack DMs to self</div>
+      <div class="scatter-item">Bookmarks</div>
+      <div class="scatter-item">Camera roll</div>
+      <div class="scatter-item">Clipboard history</div>
+      <div class="scatter-item">Telegram saved</div>
+      <div class="scatter-item">Google Keep</div>
+    </div>
+    <div class="arrow-down">
+      <span class="material-symbols-rounded">south</span>
+    </div>
+    <div class="unified">
+      <div class="unified-glow"></div>
+      <div class="unified-card">
+        <div class="unified-logo">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="url(#g2)" stroke-width="1.5"/><path d="M10 20V12L16 16L22 12V20" stroke="url(#g2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g2" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#A5B4FC"/><stop offset="1" stop-color="#6366F1"/></linearGradient></defs></svg>
+        </div>
+        <div>
+          <div class="unified-title">One inbox. One timeline.</div>
+          <div class="unified-sub">Everything, classified automatically. Searchable in milliseconds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PILLARS ========== -->
+<section class="pillars">
+  <div class="wrap">
+    <div class="kicker">Why Mnemo</div>
+    <h2 class="section-title">Four principles. <span class="grad">Zero compromise.</span></h2>
+    <div class="pillars-grid">
+      <div class="pillar" style="--c1:#10B981;--c2:#059669">
+        <div class="p-ic"><span class="material-symbols-rounded">shield_lock</span></div>
+        <h3>Privacy first</h3>
+        <p>All data lives on your device. No accounts, no telemetry, no servers. Even if we wanted your memories, we couldn't get them.</p>
+      </div>
+      <div class="pillar" style="--c1:#6366F1;--c2:#4F46E5">
+        <div class="p-ic"><span class="material-symbols-rounded">wifi_off</span></div>
+        <h3>Fully offline</h3>
+        <p>OCR, classification, and scheduled reminders all run locally. Works on the metro, on a flight, or during a blackout.</p>
+      </div>
+      <div class="pillar" style="--c1:#F59E0B;--c2:#D97706">
+        <div class="p-ic"><span class="material-symbols-rounded">bolt</span></div>
+        <h3>Blazing fast</h3>
+        <p>Isar-backed storage and debounced search that stays instant at 10k+ memories. Opens and responds in under a frame.</p>
+      </div>
+      <div class="pillar" style="--c1:#EC4899;--c2:#DB2777">
+        <div class="p-ic"><span class="material-symbols-rounded">eco</span></div>
+        <h3>Lightweight</h3>
+        <p>Material 3 UI tuned for low-end Android. Sips battery, respects storage, refuses to be bloatware.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FEATURES ========== -->
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="kicker">Features</div>
+    <h2 class="section-title">Every thought has a home.</h2>
+    <div class="features-grid">
+      <div class="feat big">
+        <div class="feat-ic" style="background:#3B82F6"><span class="material-symbols-rounded">inbox</span></div>
+        <h4>Universal save inbox</h4>
+        <p>Text, links, screenshots, manual notes — a single infinite timeline. Pin what matters. Archive what's done. Swipe what's not.</p>
+        <div class="feat-demo">
+          <div class="demo-pill"><span class="dot" style="background:#3B82F6"></span>Link</div>
+          <div class="demo-pill"><span class="dot" style="background:#8B5CF6"></span>Watch Later</div>
+          <div class="demo-pill"><span class="dot" style="background:#F59E0B"></span>Promise</div>
+          <div class="demo-pill"><span class="dot" style="background:#EAB308"></span>Idea</div>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#8B5CF6"><span class="material-symbols-rounded">share</span></div>
+        <h4>Android share target</h4>
+        <p>Share from WhatsApp, Chrome, Twitter, Telegram — any app. One tap, saved, classified.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#06B6D4"><span class="material-symbols-rounded">document_scanner</span></div>
+        <h4>On-device OCR</h4>
+        <p>Google ML Kit reads your screenshots locally. Boarding passes, receipts, notes — all searchable.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#F59E0B"><span class="material-symbols-rounded">handshake</span></div>
+        <h4>Promise detection</h4>
+        <p>"I'll send tomorrow at 5pm" and "Kal bhej dunga" both parse. Mnemo extracts the time and offers a reminder.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#EF4444"><span class="material-symbols-rounded">alarm</span></div>
+        <h4>Offline reminders</h4>
+        <p>Scheduled via flutter_local_notifications. Fires even in airplane mode. Never misses a follow-up.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#EC4899"><span class="material-symbols-rounded">search</span></div>
+        <h4>Instant search</h4>
+        <p>Full-text search with category filters. Debounced, indexed, snappy. Find anything in a single breath.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#14B8A6"><span class="material-symbols-rounded">task_alt</span></div>
+        <h4>Daily habit tracker</h4>
+        <p>Track habits with emoji, custom colors, and daily streaks. Water, reading, meditation — all in one tap.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-ic" style="background:#64748B"><span class="material-symbols-rounded">dark_mode</span></div>
+        <h4>Dark mode · export · clear</h4>
+        <p>Full Material 3 dark theme. JSON export / import for portability. Nuclear "clear all" whenever you want a blank slate.</p>
+      </div>
+      <div class="feat wide">
+        <div class="feat-ic" style="background:linear-gradient(135deg,#6366F1,#EC4899)"><span class="material-symbols-rounded">translate</span></div>
+        <h4>Built for bilingual minds</h4>
+        <p>The classifier ships with dictionaries for both English and Hinglish. "Remind me tomorrow" and "kal yaad dila dena" are the same thing to Mnemo.</p>
+        <div class="feat-demo">
+          <div class="lang-pair">
+            <div class="lang"><span class="flag">EN</span>I'll call you tomorrow</div>
+            <span class="material-symbols-rounded arr">arrow_forward</span>
+            <div class="lang-result" style="background:#F59E0B">Promise</div>
+          </div>
+          <div class="lang-pair">
+            <div class="lang"><span class="flag">HI</span>Kal call karunga</div>
+            <span class="material-symbols-rounded arr">arrow_forward</span>
+            <div class="lang-result" style="background:#F59E0B">Promise</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HABITS ========== -->
+<section class="habits" id="habits">
+  <div class="wrap">
+    <div class="habits-grid">
+      <div class="habits-copy">
+        <div class="kicker">Habits</div>
+        <h2 class="section-title">Show up, <span class="grad">every day.</span></h2>
+        <p class="section-sub">Mnemo isn't just memory — it's momentum. Build daily habits, track completions, and let Mnemo gently remind you. Built-in, offline, no separate app.</p>
+
+        <div class="habit-feats">
+          <div class="hf">
+            <div class="hf-ic" style="background:#14B8A6"><span class="material-symbols-rounded">task_alt</span></div>
+            <div>
+              <b>One-tap completion</b>
+              <em>Check off today in a breath. Visual daily streak.</em>
+            </div>
+          </div>
+          <div class="hf">
+            <div class="hf-ic" style="background:#0EA5E9"><span class="material-symbols-rounded">palette</span></div>
+            <div>
+              <b>Emoji + color coded</b>
+              <em>💧 💪 📖 🧘 — pick what represents you. Each habit gets its own color.</em>
+            </div>
+          </div>
+          <div class="hf">
+            <div class="hf-ic" style="background:#8B5CF6"><span class="material-symbols-rounded">notifications_active</span></div>
+            <div>
+              <b>Smart reminders</b>
+              <em>Daily at a fixed time, or at intervals — "drink water every 2 hours from 9am to 10pm."</em>
+            </div>
+          </div>
+          <div class="hf">
+            <div class="hf-ic" style="background:#F59E0B"><span class="material-symbols-rounded">archive</span></div>
+            <div>
+              <b>Archive &amp; restore</b>
+              <em>Done with a habit? Archive it without losing your history.</em>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="habits-phone">
+        <div class="phone">
+          <div class="phone-label">Habits</div>
+          <div class="phone-screen">
+            <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+            <div class="mini-appbar">
+              <div>
+                <div class="mini-title">Habits</div>
+                <div class="mini-sub">Tuesday, May 12</div>
+              </div>
+              <div class="mini-icon"><span class="material-symbols-rounded">add</span></div>
+            </div>
+            <div class="mini-body scroll">
+              <div class="habit-card" style="--c:#0EA5E9">
+                <div class="habit-check checked">
+                  <span class="material-symbols-rounded">check</span>
+                </div>
+                <div class="habit-body">
+                  <div class="habit-name"><span class="habit-emoji">💧</span>Drink water</div>
+                  <div class="habit-meta">Every 2h · 9am–10pm</div>
+                  <div class="streak">
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done today"></span>
+                    <span class="streak-day"></span>
+                  </div>
+                </div>
+                <div class="habit-streak-num">🔥 6</div>
+              </div>
+
+              <div class="habit-card" style="--c:#8B5CF6">
+                <div class="habit-check checked">
+                  <span class="material-symbols-rounded">check</span>
+                </div>
+                <div class="habit-body">
+                  <div class="habit-name"><span class="habit-emoji">🧘</span>Meditate</div>
+                  <div class="habit-meta">Daily · 7:00 AM</div>
+                  <div class="streak">
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done today"></span>
+                    <span class="streak-day"></span>
+                  </div>
+                </div>
+                <div class="habit-streak-num">🔥 2</div>
+              </div>
+
+              <div class="habit-card" style="--c:#10B981">
+                <div class="habit-check">
+                  <span class="material-symbols-rounded">check</span>
+                </div>
+                <div class="habit-body">
+                  <div class="habit-name"><span class="habit-emoji">📖</span>Read 10 pages</div>
+                  <div class="habit-meta">Daily · 9:00 PM</div>
+                  <div class="streak">
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day today"></span>
+                    <span class="streak-day"></span>
+                  </div>
+                </div>
+                <div class="habit-streak-num">🔥 5</div>
+              </div>
+
+              <div class="habit-card" style="--c:#EF4444">
+                <div class="habit-check">
+                  <span class="material-symbols-rounded">check</span>
+                </div>
+                <div class="habit-body">
+                  <div class="habit-name"><span class="habit-emoji">💪</span>Workout</div>
+                  <div class="habit-meta">Daily · 6:30 PM</div>
+                  <div class="streak">
+                    <span class="streak-day done"></span>
+                    <span class="streak-day"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day done"></span>
+                    <span class="streak-day"></span>
+                    <span class="streak-day today"></span>
+                    <span class="streak-day"></span>
+                  </div>
+                </div>
+                <div class="habit-streak-num">🔥 1</div>
+              </div>
+            </div>
+            <div class="mini-nav">
+              <div class="mini-tab"><span class="material-symbols-rounded">inbox</span></div>
+              <div class="mini-tab"><span class="material-symbols-rounded">grid_view</span></div>
+              <div class="mini-tab active"><span class="material-symbols-rounded">task_alt</span></div>
+              <div class="mini-tab"><span class="material-symbols-rounded">person</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CATEGORIES ========== -->
+<section class="cats">
+  <div class="wrap">
+    <div class="kicker">12 categories</div>
+    <h2 class="section-title">Auto-classified. Always.</h2>
+    <div class="cats-grid">
+      <div class="cat" style="--c:#EF4444"><span class="material-symbols-rounded">alarm</span><b>Reminder</b><em>12</em></div>
+      <div class="cat" style="--c:#F59E0B"><span class="material-symbols-rounded">handshake</span><b>Promise</b><em>4</em></div>
+      <div class="cat" style="--c:#10B981"><span class="material-symbols-rounded">check_circle</span><b>Task</b><em>7</em></div>
+      <div class="cat" style="--c:#8B5CF6"><span class="material-symbols-rounded">play_circle</span><b>Watch Later</b><em>23</em></div>
+      <div class="cat" style="--c:#06B6D4"><span class="material-symbols-rounded">menu_book</span><b>Read Later</b><em>41</em></div>
+      <div class="cat" style="--c:#EC4899"><span class="material-symbols-rounded">shopping_bag</span><b>Shopping</b><em>2</em></div>
+      <div class="cat" style="--c:#6366F1"><span class="material-symbols-rounded">school</span><b>Study</b><em>8</em></div>
+      <div class="cat" style="--c:#0EA5E9"><span class="material-symbols-rounded">work</span><b>Work</b><em>15</em></div>
+      <div class="cat" style="--c:#EAB308"><span class="material-symbols-rounded">lightbulb</span><b>Idea</b><em>9</em></div>
+      <div class="cat" style="--c:#DC2626"><span class="material-symbols-rounded">priority_high</span><b>Important</b><em>3</em></div>
+      <div class="cat" style="--c:#3B82F6"><span class="material-symbols-rounded">link</span><b>Link</b><em>29</em></div>
+      <div class="cat" style="--c:#64748B"><span class="material-symbols-rounded">sticky_note_2</span><b>Note</b><em>11</em></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SCREENS ========== -->
+<section class="screens" id="screens">
+  <div class="wrap">
+    <div class="kicker">The app</div>
+    <h2 class="section-title">Crafted in <span class="grad">Material 3</span>.</h2>
+    <p class="section-sub">Tokens pulled from the app itself. The same UI your memories live in.</p>
+
+    <div class="phones">
+      <!-- Phone 1: Inbox -->
+      <div class="phone">
+        <div class="phone-label">Inbox</div>
+        <div class="phone-screen">
+          <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+          <div class="mini-appbar">
+            <div>
+              <div class="mini-title">Inbox</div>
+              <div class="mini-sub">Your private second brain</div>
+            </div>
+            <div class="mini-icon"><span class="material-symbols-rounded">tune</span></div>
+          </div>
+          <div class="mini-body scroll">
+            <div class="mini-chip-row">
+              <span class="mini-chip active">All</span>
+              <span class="mini-chip">Today</span>
+              <span class="mini-chip">Pinned</span>
+            </div>
+            <div class="mini-section"><span class="material-symbols-rounded">push_pin</span>Pinned</div>
+            <div class="mini-card pinned">
+              <div class="mini-card-head">
+                <span class="material-symbols-rounded">handshake</span>
+                <span>Promise</span>
+                <span class="mini-time">2h</span>
+              </div>
+              <div class="mini-card-text">"I'll send Arjun the deck tomorrow before the review."</div>
+              <div class="mini-card-row">
+                <span class="mini-tag">#work</span>
+                <span class="mini-tag-bell"><span class="material-symbols-rounded">alarm</span>Tue 9:00</span>
+              </div>
+            </div>
+            <div class="mini-section">Today</div>
+            <div class="mini-card">
+              <div class="mini-badge" style="background:#3B82F6"><span class="material-symbols-rounded">link</span></div>
+              <div class="mini-card-col">
+                <div class="mini-card-head"><span>Link</span><span class="mini-time">11:24</span></div>
+                <div class="mini-url">arxiv.org/abs/2401.10515</div>
+                <div class="mini-card-text small">Mixture of Depths — dynamic compute</div>
+              </div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-thumb"><span class="material-symbols-rounded">image</span></div>
+              <div class="mini-card-col">
+                <div class="mini-card-head"><span>Screenshot</span><span class="mini-time">10:02</span></div>
+                <div class="mini-card-text small">OCR: "Flight IX 2042 · Gate B12 · Seat 22A"</div>
+              </div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-badge" style="background:#EC4899"><span class="material-symbols-rounded">shopping_bag</span></div>
+              <div class="mini-card-col">
+                <div class="mini-card-head"><span>Shopping</span><span class="mini-time">Yst</span></div>
+                <div class="mini-card-text small">milk, eggs, olive oil, coffee</div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-fab"><span class="material-symbols-rounded">add</span></div>
+          <div class="mini-nav">
+            <div class="mini-tab active"><span class="material-symbols-rounded">inbox</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">grid_view</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">alarm</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">person</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone 2: Capture -->
+      <div class="phone">
+        <div class="phone-label">Quick Capture</div>
+        <div class="phone-screen">
+          <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+          <div class="mini-body dim">
+            <div class="mini-card"><div class="mini-badge" style="background:#3B82F6"><span class="material-symbols-rounded">link</span></div><div class="mini-card-col"><div class="mini-card-head"><span>Link</span></div><div class="mini-url">arxiv.org/…</div></div></div>
+          </div>
+          <div class="sheet">
+            <div class="sheet-grip"></div>
+            <div class="sheet-head">
+              <div class="sheet-title">New memory</div>
+              <span class="material-symbols-rounded">close</span>
+            </div>
+            <div class="sheet-box">I'll send Arjun the deck tomorrow morning.</div>
+            <div class="sheet-sug">
+              <span class="sug-lbl">SUGGESTED</span>
+              <span class="sug-chip glow"><span class="material-symbols-rounded">handshake</span>Promise</span>
+              <span class="sug-chip"><span class="material-symbols-rounded">alarm</span>Reminder</span>
+            </div>
+            <div class="sheet-sources">
+              <div class="src"><span class="material-symbols-rounded">content_paste</span>Clipboard</div>
+              <div class="src"><span class="material-symbols-rounded">photo_camera</span>Photo</div>
+              <div class="src"><span class="material-symbols-rounded">collections</span>Gallery</div>
+            </div>
+            <div class="sheet-cta">
+              <button class="sheet-btn-g">Cancel</button>
+              <button class="sheet-btn-p">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone 3: Browse -->
+      <div class="phone">
+        <div class="phone-label">Browse</div>
+        <div class="phone-screen">
+          <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+          <div class="mini-appbar">
+            <div>
+              <div class="mini-title">Browse</div>
+              <div class="mini-sub">127 memories · 11 categories</div>
+            </div>
+            <div class="mini-icon"><span class="material-symbols-rounded">filter_list</span></div>
+          </div>
+          <div class="mini-body scroll">
+            <div class="mini-section">Categories</div>
+            <div class="mini-cat-grid">
+              <div class="mini-cat" style="--c:#EF4444"><div class="mini-cat-ic"><span class="material-symbols-rounded">alarm</span></div><b>Reminder</b><em>12</em></div>
+              <div class="mini-cat" style="--c:#F59E0B"><div class="mini-cat-ic"><span class="material-symbols-rounded">handshake</span></div><b>Promise</b><em>4</em></div>
+              <div class="mini-cat" style="--c:#8B5CF6"><div class="mini-cat-ic"><span class="material-symbols-rounded">play_circle</span></div><b>Watch</b><em>23</em></div>
+              <div class="mini-cat" style="--c:#06B6D4"><div class="mini-cat-ic"><span class="material-symbols-rounded">menu_book</span></div><b>Read</b><em>41</em></div>
+              <div class="mini-cat" style="--c:#EC4899"><div class="mini-cat-ic"><span class="material-symbols-rounded">shopping_bag</span></div><b>Shop</b><em>2</em></div>
+              <div class="mini-cat" style="--c:#EAB308"><div class="mini-cat-ic"><span class="material-symbols-rounded">lightbulb</span></div><b>Idea</b><em>9</em></div>
+            </div>
+          </div>
+          <div class="mini-nav">
+            <div class="mini-tab"><span class="material-symbols-rounded">inbox</span></div>
+            <div class="mini-tab active"><span class="material-symbols-rounded">grid_view</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">alarm</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">person</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone 4: Reminders -->
+      <div class="phone">
+        <div class="phone-label">Reminders</div>
+        <div class="phone-screen">
+          <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+          <div class="mini-appbar">
+            <div>
+              <div class="mini-title">Reminders</div>
+              <div class="mini-sub">3 upcoming</div>
+            </div>
+            <div class="mini-icon"><span class="material-symbols-rounded">add</span></div>
+          </div>
+          <div class="mini-body scroll">
+            <div class="mini-section">Upcoming</div>
+            <div class="tl">
+              <div class="tl-row">
+                <div class="tl-rail"><div class="tl-dot"></div></div>
+                <div>
+                  <div class="tl-when">TOMORROW · 9:00 AM</div>
+                  <div class="tl-what">Send Arjun the deck</div>
+                  <div class="tl-sub">From promise · 2h ago</div>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-rail"><div class="tl-dot" style="background:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,0.2)"></div></div>
+                <div>
+                  <div class="tl-when">FRI, MAY 15 · 6:30 PM</div>
+                  <div class="tl-what">Call mom</div>
+                  <div class="tl-sub">Weekly</div>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-rail"><div class="tl-dot" style="background:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,0.2)"></div></div>
+                <div>
+                  <div class="tl-when">MON, MAY 18 · 10:00 AM</div>
+                  <div class="tl-what">Submit expense report</div>
+                  <div class="tl-sub">#work</div>
+                </div>
+              </div>
+            </div>
+            <div class="mini-section">Past</div>
+            <div class="tl">
+              <div class="tl-row past">
+                <div class="tl-rail"><div class="tl-dot"></div></div>
+                <div>
+                  <div class="tl-when">YESTERDAY · 8:00 AM</div>
+                  <div class="tl-what">Pay rent</div>
+                  <div class="tl-sub">✓ Completed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-nav">
+            <div class="mini-tab"><span class="material-symbols-rounded">inbox</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">grid_view</span></div>
+            <div class="mini-tab active"><span class="material-symbols-rounded">alarm</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">person</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Phone 5: Habits -->
+      <div class="phone">
+        <div class="phone-label">Habits</div>
+        <div class="phone-screen">
+          <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+          <div class="mini-appbar">
+            <div>
+              <div class="mini-title">Habits</div>
+              <div class="mini-sub">Tuesday, May 12</div>
+            </div>
+            <div class="mini-icon"><span class="material-symbols-rounded">add</span></div>
+          </div>
+          <div class="mini-body scroll">
+            <div class="habit-card small" style="--c:#0EA5E9">
+              <div class="habit-check checked"><span class="material-symbols-rounded">check</span></div>
+              <div class="habit-body">
+                <div class="habit-name"><span class="habit-emoji">💧</span>Drink water</div>
+                <div class="habit-meta">Every 2h</div>
+              </div>
+              <div class="habit-streak-num">🔥 6</div>
+            </div>
+            <div class="habit-card small" style="--c:#8B5CF6">
+              <div class="habit-check checked"><span class="material-symbols-rounded">check</span></div>
+              <div class="habit-body">
+                <div class="habit-name"><span class="habit-emoji">🧘</span>Meditate</div>
+                <div class="habit-meta">7:00 AM</div>
+              </div>
+              <div class="habit-streak-num">🔥 2</div>
+            </div>
+            <div class="habit-card small" style="--c:#10B981">
+              <div class="habit-check"><span class="material-symbols-rounded">check</span></div>
+              <div class="habit-body">
+                <div class="habit-name"><span class="habit-emoji">📖</span>Read 10 pages</div>
+                <div class="habit-meta">9:00 PM</div>
+              </div>
+              <div class="habit-streak-num">🔥 5</div>
+            </div>
+            <div class="habit-card small" style="--c:#EF4444">
+              <div class="habit-check"><span class="material-symbols-rounded">check</span></div>
+              <div class="habit-body">
+                <div class="habit-name"><span class="habit-emoji">💪</span>Workout</div>
+                <div class="habit-meta">6:30 PM</div>
+              </div>
+              <div class="habit-streak-num">🔥 1</div>
+            </div>
+          </div>
+          <div class="mini-nav">
+            <div class="mini-tab"><span class="material-symbols-rounded">inbox</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">grid_view</span></div>
+            <div class="mini-tab active"><span class="material-symbols-rounded">task_alt</span></div>
+            <div class="mini-tab"><span class="material-symbols-rounded">person</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="tech">
+  <div class="wrap">
+    <div class="kicker">Under the hood</div>
+    <h2 class="section-title">Honest, boring, solid tech.</h2>
+    <div class="tech-grid">
+      <div class="tech-card"><span class="material-symbols-rounded">flutter_dash</span><div><b>Flutter + Material 3</b><em>Stable channel</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">hub</span><div><b>Riverpod</b><em>Clean state</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">database</span><div><b>Isar</b><em>Fast local DB</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">document_scanner</span><div><b>Google ML Kit</b><em>On-device OCR</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">notifications_active</span><div><b>Local Notifications</b><em>Timezone-aware</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">route</span><div><b>go_router</b><em>Typed nav</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">share</span><div><b>receive_sharing_intent</b><em>Share target</em></div></div>
+      <div class="tech-card"><span class="material-symbols-rounded">android</span><div><b>minSdk 23</b><em>Broad support</em></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== DOWNLOAD CTA ========== -->
+<section class="cta" id="download">
+  <div class="wrap">
+    <div class="cta-glow"></div>
+    <div class="cta-card">
+      <div class="cta-left">
+        <div class="kicker">Get it</div>
+        <h2 class="section-title">Remember <span class="grad">everything.</span></h2>
+        <p class="section-sub">Free, open source, offline. Side-load the APK and you're set. Android 6+ required.</p>
+        <div class="hero-ctas">
+          <a href="https://github.com/prakash66958-netizen/mnemo/releases/latest/download/app-release.apk" class="btn btn-primary">
+            <span class="material-symbols-rounded">download</span>
+            Download APK
+            <span class="btn-ver">Latest</span>
+          </a>
+          <a href="https://github.com/prakash66958-netizen/mnemo/releases" target="_blank" rel="noopener" class="btn btn-ghost">
+            <span class="material-symbols-rounded">history</span>
+            All releases
+          </a>
+        </div>
+        <div class="cta-meta">
+          <div><span class="material-symbols-rounded">android</span>Android 6+ (API 23)</div>
+          <div><span class="material-symbols-rounded">shield</span>No permissions beyond storage</div>
+          <div><span class="material-symbols-rounded">code</span>Open source · MIT</div>
+        </div>
+      </div>
+      <div class="cta-right">
+        <div class="phone small">
+          <div class="phone-screen">
+            <div class="mini-status"><span>9:41</span><span class="pill-mini"></span></div>
+            <div class="mini-appbar">
+              <div><div class="mini-title">Inbox</div></div>
+            </div>
+            <div class="mini-body">
+              <div class="mini-card pinned">
+                <div class="mini-card-head"><span class="material-symbols-rounded">handshake</span><span>Promise</span></div>
+                <div class="mini-card-text">"Kal bhej dunga"</div>
+              </div>
+              <div class="mini-card">
+                <div class="mini-badge" style="background:#EAB308"><span class="material-symbols-rounded">lightbulb</span></div>
+                <div class="mini-card-col">
+                  <div class="mini-card-head"><span>Idea</span></div>
+                  <div class="mini-card-text small">Weekly digest on-device</div>
+                </div>
+              </div>
+            </div>
+            <div class="mini-fab"><span class="material-symbols-rounded">add</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="15" stroke="url(#g3)" stroke-width="1.5"/><path d="M10 20V12L16 16L22 12V20" stroke="url(#g3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g3" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#A5B4FC"/><stop offset="1" stop-color="#6366F1"/></linearGradient></defs></svg>
+      </span>
+      <div>
+        <div class="footer-name">Mnemo</div>
+        <div class="footer-tag">Your private second brain.</div>
+      </div>
+    </div>
+    <div class="footer-links">
+      <a href="#features">Features</a>
+      <a href="#habits">Habits</a>
+      <a href="#screens">Screens</a>
+      <a href="https://github.com/prakash66958-netizen/mnemo" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/prakash66958-netizen/mnemo/releases" target="_blank" rel="noopener">Releases</a>
+    </div>
+    <div class="footer-copy">
+      Made with care. No data leaves your device.
+    </div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

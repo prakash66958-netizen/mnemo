@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Indigo bolt used for the cold-start launch splash. Same path geometry as
+    drawable/ic_launcher_foreground.xml but filled in brand indigo so it
+    reads against the white launch_background. Intrinsic size is 144dp so
+    the layer-list can center it without stretching.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="144dp"
+    android:height="144dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M66,22 L28,62 L50,62 L42,86 L80,46 L58,46 Z"
+        android:fillColor="#4F46E5" />
+</vector>

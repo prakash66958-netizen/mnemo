@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher icon foreground.
+
+    Viewport is the full 108dp adaptive-icon canvas. The glyph itself is kept
+    inside the inner 66dp safe zone (x=28..80, y=22..86) so that every mask
+    shape (circle, squircle, rounded-square) renders the bolt intact. The
+    bolt is the same `Icons.bolt_rounded` glyph the splash screen in
+    lib/app.dart uses, drawn in white for high contrast against the indigo
+    background drawable.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M66,22 L28,62 L50,62 L42,86 L80,46 L58,46 Z"
+        android:fillColor="#FFFFFF" />
+</vector>

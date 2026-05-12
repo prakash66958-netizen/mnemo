@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch splash: white base with the brand bolt centered so the first
+     frame users see echoes the in-app splash in lib/app.dart. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+    <item
+        android:drawable="@drawable/splash_bolt"
+        android:gravity="center" />
+</layer-list>

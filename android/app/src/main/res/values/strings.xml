@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mnemo</string>
+    <!-- Label shown in the Android system share sheet (Instagram, Chrome, etc.) -->
+    <string name="share_to_mnemo_label">Save to Mnemo</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Status-bar / lockscreen small icon for Mnemo notifications.
+
+    Android renders the notification small icon as an alpha-only mask and tints
+    it with the channel / notification accent color at display time. Any
+    non-white pixels are stripped, which is why this drawable is a single white
+    path on a transparent 24dp canvas (the status bar crops to 24dp).
+
+    The glyph is the same `Icons.bolt_rounded` lightning bolt used in the
+    adaptive launcher foreground (ic_launcher_foreground.xml) and the splash
+    screen, rescaled from the 108-unit launcher viewport down to 24 so it
+    remains readable at 18dp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M14.7,4.9 L6.2,13.8 L11.1,13.8 L9.3,19.1 L17.8,10.2 L12.9,10.2 Z"
+        android:fillColor="#FFFFFFFF" />
+</vector>

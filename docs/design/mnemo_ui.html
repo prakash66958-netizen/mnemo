@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mnemo — UI Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet" />
+<style>
+  /* --- Tokens mirror lib/core/theme/app_theme.dart & category.dart --- */
+  :root{
+    --seed:#4F46E5;
+    --primary:#4F46E5;
+    --on-primary:#ffffff;
+    --primary-container:#E0E0FF;
+    --on-primary-container:#1A0A8F;
+
+    --surface:#FDFBFF;
+    --surface-dim:#F4F2F7;
+    --surface-container:#F0EDF5;
+    --surface-container-high:#EAE6F1;
+    --surface-container-highest:#E4DFEC;
+    --on-surface:#1B1B1F;
+    --on-surface-variant:#47464F;
+    --outline-variant:#C7C5D0;
+
+    --cat-reminder:#EF4444;
+    --cat-promise:#F59E0B;
+    --cat-task:#10B981;
+    --cat-watch:#8B5CF6;
+    --cat-read:#06B6D4;
+    --cat-shop:#EC4899;
+    --cat-study:#6366F1;
+    --cat-work:#0EA5E9;
+    --cat-idea:#EAB308;
+    --cat-important:#DC2626;
+    --cat-link:#3B82F6;
+    --cat-note:#64748B;
+
+    /* Radii from theme */
+    --r-card:20px;
+    --r-input:16px;
+    --r-btn:14px;
+    --r-chip:10px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:#E9E6F0;color:#1B1B1F;-webkit-font-smoothing:antialiased}
+  .page{
+    min-height:100vh;
+    padding:48px 24px 80px;
+    background:
+      radial-gradient(1000px 500px at 10% 0%, #DDD8EE 0%, transparent 60%),
+      radial-gradient(900px 600px at 90% 10%, #E8E0F7 0%, transparent 55%),
+      linear-gradient(180deg,#EEEBF5,#E5E1ED);
+  }
+  .page header{max-width:1400px;margin:0 auto 40px}
+  .page h1{font-size:28px;font-weight:800;letter-spacing:-0.4px;margin:0 0 6px}
+  .page h1 span{color:var(--primary)}
+  .page p{margin:0;color:#4A4858;font-size:14px}
+
+  .gallery{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+    gap:48px 28px;
+    max-width:1400px;margin:0 auto;
+    justify-items:center;
+  }
+  .screen-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .screen-wrap h2{margin:0;font-size:13px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:#6B6879}
+
+  /* Phone frame */
+  .phone{
+    width:360px;height:740px;
+    background:#0B0A10;
+    border-radius:44px;
+    padding:10px;
+    box-shadow:
+      0 40px 80px -30px rgba(20,15,60,0.35),
+      0 8px 24px -12px rgba(20,15,60,0.25),
+      inset 0 0 0 1.5px rgba(255,255,255,0.05);
+    position:relative;
+  }
+  .phone::before{
+    content:"";position:absolute;top:18px;left:50%;transform:translateX(-50%);
+    width:96px;height:26px;background:#0B0A10;border-radius:16px;z-index:20;
+  }
+  .phone .screen{
+    width:100%;height:100%;
+    background:var(--surface);
+    border-radius:34px;
+    overflow:hidden;
+    position:relative;
+    display:flex;flex-direction:column;
+  }
+  .status{
+    height:44px;padding:0 22px;display:flex;align-items:flex-end;justify-content:space-between;
+    padding-bottom:6px;font-size:12px;font-weight:600;color:var(--on-surface);
+  }
+  .status .dots{display:flex;gap:4px;align-items:center}
+  .status .dots .bar{width:16px;height:10px;border:1.5px solid var(--on-surface);border-radius:3px;position:relative}
+  .status .dots .bar::after{content:"";position:absolute;inset:1.5px;background:var(--on-surface);border-radius:1.5px;width:70%}
+
+  /* Generic building blocks */
+  .app-bar{
+    padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .app-bar .title{font-size:22px;font-weight:700;letter-spacing:-0.2px}
+  .app-bar .subtitle{font-size:12px;color:var(--on-surface-variant);margin-top:2px}
+  .icon-btn{
+    width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+    color:var(--on-surface);cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--surface-container-high)}
+  .icon-btn .material-symbols-rounded{font-size:22px}
+  .actions{display:flex;gap:4px}
+
+  .body{flex:1;overflow:hidden;padding:0 16px 12px;position:relative}
+
+  /* Segmented tabs */
+  .segment{
+    display:flex;gap:6px;padding:4px;background:var(--surface-container);
+    border-radius:14px;margin:8px 4px 14px;
+  }
+  .segment div{
+    flex:1;text-align:center;padding:8px 10px;font-size:13px;font-weight:600;
+    color:var(--on-surface-variant);border-radius:10px;cursor:pointer;
+  }
+  .segment div.active{background:var(--surface);color:var(--on-surface);box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+
+  .section-label{
+    font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+    color:var(--on-surface-variant);padding:14px 4px 8px;display:flex;align-items:center;gap:6px;
+  }
+  .section-label .material-symbols-rounded{font-size:14px}
+
+  /* Memory card */
+  .card{
+    background:var(--surface-container-high);
+    border-radius:var(--r-card);
+    padding:14px 14px 12px;
+    margin-bottom:10px;
+    display:flex;gap:12px;
+  }
+  .card .badge{
+    width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+    flex-shrink:0;color:#fff;
+  }
+  .card .badge .material-symbols-rounded{font-size:20px}
+  .card .body-col{flex:1;min-width:0}
+  .card .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .card .label{font-size:12px;font-weight:600;color:var(--on-surface-variant)}
+  .card .time{font-size:11px;color:var(--on-surface-variant);white-space:nowrap}
+  .card .text{font-size:14px;font-weight:500;color:var(--on-surface);line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card .url{font-size:13px;color:var(--primary);font-weight:500;margin-bottom:2px;word-break:break-all}
+  .card .meta-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+
+  .tag{
+    font-size:11px;font-weight:500;padding:3px 8px;border-radius:var(--r-chip);
+    background:var(--surface-container);color:var(--on-surface-variant);
+  }
+  .tag.accent{background:color-mix(in srgb, var(--primary) 12%, transparent);color:var(--primary)}
+  .tag.bell{background:color-mix(in srgb, var(--cat-reminder) 12%, transparent);color:var(--cat-reminder);display:inline-flex;align-items:center;gap:3px}
+  .tag.bell .material-symbols-rounded{font-size:12px}
+
+  .thumb{
+    width:56px;height:56px;border-radius:14px;background:
+      linear-gradient(135deg,#C7D2FE,#E0E7FF);
+    display:grid;place-items:center;color:#4338CA;flex-shrink:0;
+  }
+  .thumb .material-symbols-rounded{font-size:26px}
+
+  /* Pinned strip */
+  .pinned-card{
+    background:linear-gradient(135deg,#FEF3C7,#FDE68A);
+    border-radius:var(--r-card);padding:14px;margin-bottom:10px;
+    border:1px solid rgba(245,158,11,0.25);
+  }
+  .pinned-card .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .pinned-card .top .material-symbols-rounded{font-size:16px;color:#B45309}
+  .pinned-card .label{font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#92400E}
+  .pinned-card .text{font-size:14px;font-weight:600;color:#422006;line-height:1.35;margin-bottom:8px}
+
+  /* FAB */
+  .fab{
+    position:absolute;right:18px;bottom:90px;
+    width:58px;height:58px;border-radius:20px;
+    background:var(--primary);color:var(--on-primary);
+    display:grid;place-items:center;
+    box-shadow:0 8px 24px -6px rgba(79,70,229,0.5), 0 2px 6px rgba(79,70,229,0.3);
+  }
+  .fab .material-symbols-rounded{font-size:28px}
+
+  /* Bottom nav */
+  .nav{
+    height:68px;background:var(--surface);
+    border-top:1px solid var(--outline-variant);
+    display:flex;align-items:center;justify-content:space-around;
+    padding:0 8px;
+  }
+  .nav .tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--on-surface-variant);padding:6px 14px;border-radius:14px;cursor:pointer}
+  .nav .tab .pill{width:56px;height:30px;border-radius:16px;display:grid;place-items:center;background:transparent;color:var(--on-surface-variant)}
+  .nav .tab.active .pill{background:var(--primary-container);color:var(--on-primary-container)}
+  .nav .tab.active{color:var(--on-surface)}
+  .nav .tab .material-symbols-rounded{font-size:22px}
+
+  /* Category grid */
+  .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px}
+  .cat-tile{
+    border-radius:var(--r-card);padding:16px;
+    position:relative;overflow:hidden;min-height:108px;display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .cat-tile .icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff}
+  .cat-tile .name{font-size:14px;font-weight:700;color:var(--on-surface)}
+  .cat-tile .count{font-size:12px;color:var(--on-surface-variant);font-weight:500}
+  .cat-tile::before{content:"";position:absolute;inset:0;opacity:0.10;background:var(--tint)}
+  .cat-tile{background:var(--surface-container)}
+
+  /* Reminders timeline */
+  .timeline{padding:4px}
+  .t-row{display:flex;gap:14px;position:relative;padding-bottom:18px}
+  .t-row .rail{position:relative;width:14px;display:flex;justify-content:center}
+  .t-row .rail::before{content:"";position:absolute;top:14px;bottom:-6px;left:50%;width:2px;background:var(--outline-variant);transform:translateX(-50%)}
+  .t-row:last-child .rail::before{display:none}
+  .t-row .dot{width:12px;height:12px;border-radius:50%;margin-top:4px;background:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)}
+  .t-row.past .dot{background:var(--surface-container-highest);box-shadow:none}
+  .t-row .when{font-size:11px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:var(--on-surface-variant);margin-bottom:4px}
+  .t-row .what{font-size:15px;font-weight:600;color:var(--on-surface)}
+  .t-row .sub{font-size:12px;color:var(--on-surface-variant);margin-top:2px}
+  .t-row.past .what{color:var(--on-surface-variant);text-decoration:line-through;text-decoration-color:color-mix(in srgb, var(--on-surface-variant) 40%, transparent)}
+
+  /* Capture sheet */
+  .sheet{
+    position:absolute;inset:0;background:rgba(18,16,30,0.45);backdrop-filter:blur(2px);
+    display:flex;flex-direction:column;justify-content:flex-end;border-radius:34px;overflow:hidden;
+  }
+  .sheet-body{
+    background:var(--surface);border-radius:28px 28px 0 0;padding:10px 18px 22px;
+  }
+  .grip{width:40px;height:4px;border-radius:2px;background:var(--outline-variant);margin:6px auto 14px}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sheet-head .t{font-size:18px;font-weight:700}
+  .textbox{
+    background:var(--surface-container-high);border-radius:var(--r-input);padding:14px 16px;
+    min-height:100px;font-size:14px;color:var(--on-surface-variant);line-height:1.45;
+  }
+  .suggested{margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .suggested .label{font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--on-surface-variant)}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;padding:6px 10px;
+    background:var(--surface-container);border-radius:var(--r-chip);
+    font-size:12px;font-weight:600;color:var(--on-surface);
+  }
+  .chip.glow{background:color-mix(in srgb, var(--cat-promise) 14%, transparent);color:#92400E}
+  .chip .material-symbols-rounded{font-size:14px}
+  .sources{display:flex;gap:8px;margin-top:14px}
+  .source{
+    flex:1;background:var(--surface-container);border-radius:14px;padding:12px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--on-surface)
+  }
+  .source .material-symbols-rounded{font-size:22px;color:var(--primary)}
+  .sheet-cta{display:flex;justify-content:flex-end;margin-top:16px}
+  .btn-primary{
+    background:var(--primary);color:var(--on-primary);border:none;border-radius:var(--r-btn);
+    padding:12px 22px;font-weight:600;font-size:14px;letter-spacing:0.1px;cursor:pointer;
+    box-shadow:0 4px 12px -4px rgba(79,70,229,0.4);
+  }
+  .btn-ghost{
+    background:transparent;border:1px solid var(--outline-variant);border-radius:var(--r-btn);
+    padding:12px 20px;font-weight:600;font-size:14px;color:var(--on-surface);cursor:pointer;
+  }
+
+  /* Detail screen */
+  .detail-hero{padding:14px 6px 0}
+  .cat-pill{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;
+    background:color-mix(in srgb, var(--cat-promise) 14%, transparent);color:#92400E;
+    font-size:12px;font-weight:700;
+  }
+  .cat-pill .material-symbols-rounded{font-size:14px}
+  .detail-body{font-size:22px;font-weight:700;letter-spacing:-0.2px;line-height:1.3;margin:14px 6px 12px}
+  .detail-tags{display:flex;gap:6px;padding:0 6px;margin-bottom:18px;flex-wrap:wrap}
+  .meta-row{display:flex;justify-content:space-between;padding:10px 6px;border-top:1px solid var(--outline-variant);font-size:13px}
+  .meta-row .k{color:var(--on-surface-variant);font-weight:500}
+  .meta-row .v{color:var(--on-surface);font-weight:600}
+  .detail-cta{display:flex;gap:10px;margin-top:18px}
+  .detail-cta button{flex:1}
+
+  /* --- Dark variant --- */
+  .dark .screen{
+    --surface:#121117;
+    --surface-dim:#0D0C12;
+    --surface-container:#1B1A22;
+    --surface-container-high:#22212B;
+    --surface-container-highest:#2B2A35;
+    --on-surface:#E6E1F0;
+    --on-surface-variant:#A7A2B4;
+    --outline-variant:#2E2D38;
+    --primary-container:#312E81;
+    --on-primary-container:#E0E7FF;
+    background:var(--surface);color:var(--on-surface);
+  }
+  .dark .status, .dark .app-bar .title, .dark .card .text, .dark .cat-tile .name,
+  .dark .t-row .what, .dark .sheet-head .t, .dark .detail-body{color:var(--on-surface)}
+  .dark .section-label, .dark .card .label, .dark .card .time, .dark .cat-tile .count,
+  .dark .t-row .when, .dark .t-row .sub, .dark .app-bar .subtitle{color:var(--on-surface-variant)}
+  .dark .icon-btn{color:var(--on-surface)}
+  .dark .segment div{color:var(--on-surface-variant)}
+  .dark .segment div.active{background:var(--surface-container-high);color:var(--on-surface)}
+  .dark .tag{background:var(--surface-container);color:var(--on-surface-variant)}
+  .dark .pinned-card{background:linear-gradient(135deg,#3F2A0C,#4A3312);border-color:rgba(245,158,11,0.25)}
+  .dark .pinned-card .text{color:#FDE68A}
+  .dark .pinned-card .label{color:#FCD34D}
+  .dark .pinned-card .top .material-symbols-rounded{color:#FCD34D}
+  .dark .thumb{background:linear-gradient(135deg,#312E81,#4338CA);color:#C7D2FE}
+
+  .legend{max-width:1400px;margin:56px auto 0;padding:22px;background:rgba(255,255,255,0.6);border-radius:20px;backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.8)}
+  .legend h3{margin:0 0 12px;font-size:14px;letter-spacing:0.4px;text-transform:uppercase;color:#4A4858}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px}
+  .sw{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:600}
+  .sw .dot{width:14px;height:14px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Mnemo <span>· UI preview</span></h1>
+    <p>High-fidelity HTML mockup. Tokens pulled directly from <code>app_theme.dart</code> and <code>category.dart</code>. Open this file in your browser.</p>
+  </header>
+
+  <div class="gallery">
+
+    <!-- ============ 1. INBOX (light) ============ -->
+    <div class="screen-wrap">
+      <h2>1 · Inbox</h2>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><div class="dots"><span class="material-symbols-rounded" style="font-size:14px">wifi</span><span class="bar"></span></div></div>
+        <div class="app-bar">
+          <div>
+            <div class="title">Inbox</div>
+            <div class="subtitle">Your private second brain</div>
+          </div>
+          <div class="actions">
+            <div class="icon-btn"><span class="material-symbols-rounded">search</span></div>
+            <div class="icon-btn"><span class="material-symbols-rounded">tune</span></div>
+          </div>
+        </div>
+        <div class="body" style="overflow-y:auto">
+          <div class="segment">
+            <div class="active">All</div>
+            <div>Today</div>
+            <div>Pinned</div>
+            <div>Archive</div>
+          </div>
+
+          <div class="section-label"><span class="material-symbols-rounded">push_pin</span>Pinned</div>
+          <div class="pinned-card">
+            <div class="top">
+              <span class="material-symbols-rounded">handshake</span>
+              <span class="label">Promise</span>
+              <span style="margin-left:auto;font-size:11px;color:#92400E;font-weight:600">2h ago</span>
+            </div>
+            <div class="text">"I'll send Arjun the deck tomorrow morning before the review."</div>
+            <div class="meta-row">
+              <span class="tag" style="background:rgba(146,64,14,0.12);color:#92400E">#work</span>
+              <span class="tag" style="background:rgba(146,64,14,0.12);color:#92400E">#follow-up</span>
+              <span class="tag bell"><span class="material-symbols-rounded">alarm</span>Tue 9:00</span>
+            </div>
+          </div>
+
+          <div class="section-label">Today</div>
+          <div class="card">
+            <div class="badge" style="background:var(--cat-link)"><span class="material-symbols-rounded">link</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Link</span><span class="time">11:24 AM</span></div>
+              <div class="url">arxiv.org/abs/2401.10515</div>
+              <div class="text">Mixture of Depths — dynamic compute allocation in transformers.</div>
+              <div class="meta-row">
+                <span class="tag accent">Read Later</span>
+                <span class="tag">#ml</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="thumb"><span class="material-symbols-rounded">image</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Screenshot</span><span class="time">10:02 AM</span></div>
+              <div class="text">OCR: "Flight IX 2042 · Gate B12 · Boarding 14:30 · Seat 22A"</div>
+              <div class="meta-row">
+                <span class="tag">#travel</span>
+                <span class="tag bell"><span class="material-symbols-rounded">location_on</span>auto-detected</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label">Yesterday</div>
+          <div class="card">
+            <div class="badge" style="background:var(--cat-shop)"><span class="material-symbols-rounded">shopping_bag</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Shopping</span><span class="time">9:41 PM</span></div>
+              <div class="text">milk, eggs, olive oil, coffee, sourdough</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="badge" style="background:var(--cat-idea)"><span class="material-symbols-rounded">lightbulb</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Idea</span><span class="time">8:17 PM</span></div>
+              <div class="text">A weekly digest of saved links, generated entirely on-device.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fab"><span class="material-symbols-rounded">add</span></div>
+
+        <div class="nav">
+          <div class="tab active"><div class="pill"><span class="material-symbols-rounded">inbox</span></div>Inbox</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">grid_view</span></div>Browse</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">alarm</span></div>Remind</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">person</span></div>Me</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ 2. QUICK CAPTURE SHEET ============ -->
+    <div class="screen-wrap">
+      <h2>2 · Quick Capture</h2>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span></div></div>
+        <div class="app-bar">
+          <div><div class="title">Inbox</div></div>
+          <div class="actions">
+            <div class="icon-btn"><span class="material-symbols-rounded">search</span></div>
+          </div>
+        </div>
+        <div class="body" style="opacity:0.55;pointer-events:none">
+          <div class="card"><div class="badge" style="background:var(--cat-link)"><span class="material-symbols-rounded">link</span></div><div class="body-col"><div class="top"><span class="label">Link</span></div><div class="url">arxiv.org/abs/2401.10515</div></div></div>
+          <div class="card"><div class="thumb"><span class="material-symbols-rounded">image</span></div><div class="body-col"><div class="top"><span class="label">Screenshot</span></div><div class="text">OCR: Flight IX 2042…</div></div></div>
+        </div>
+
+        <div class="sheet">
+          <div class="sheet-body">
+            <div class="grip"></div>
+            <div class="sheet-head">
+              <div class="t">New memory</div>
+              <div class="icon-btn"><span class="material-symbols-rounded">close</span></div>
+            </div>
+            <div class="textbox">I'll send Arjun the deck tomorrow morning before the review.</div>
+
+            <div class="suggested">
+              <div class="label">Suggested</div>
+              <div class="chip glow"><span class="material-symbols-rounded">handshake</span>Promise</div>
+              <div class="chip"><span class="material-symbols-rounded">alarm</span>Reminder</div>
+              <div class="chip"><span class="material-symbols-rounded">sticky_note_2</span>Note</div>
+            </div>
+
+            <div class="sources">
+              <div class="source"><span class="material-symbols-rounded">content_paste</span>Clipboard</div>
+              <div class="source"><span class="material-symbols-rounded">photo_camera</span>Photo</div>
+              <div class="source"><span class="material-symbols-rounded">collections</span>Gallery</div>
+              <div class="source"><span class="material-symbols-rounded">mic</span>Voice</div>
+            </div>
+
+            <div class="sheet-cta">
+              <button class="btn-ghost" style="margin-right:8px">Cancel</button>
+              <button class="btn-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ 3. BROWSE / CATEGORIES ============ -->
+    <div class="screen-wrap">
+      <h2>3 · Browse</h2>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span></div></div>
+        <div class="app-bar">
+          <div><div class="title">Browse</div><div class="subtitle">127 memories · 11 categories</div></div>
+          <div class="actions"><div class="icon-btn"><span class="material-symbols-rounded">filter_list</span></div></div>
+        </div>
+        <div class="body" style="overflow-y:auto">
+          <div class="section-label">Categories</div>
+          <div class="cat-grid">
+            <div class="cat-tile" style="--tint:var(--cat-reminder)"><div class="icon" style="background:var(--cat-reminder)"><span class="material-symbols-rounded">alarm</span></div><div><div class="name">Reminder</div><div class="count">12 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-promise)"><div class="icon" style="background:var(--cat-promise)"><span class="material-symbols-rounded">handshake</span></div><div><div class="name">Promise</div><div class="count">4 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-task)"><div class="icon" style="background:var(--cat-task)"><span class="material-symbols-rounded">check_circle</span></div><div><div class="name">Task</div><div class="count">7 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-watch)"><div class="icon" style="background:var(--cat-watch)"><span class="material-symbols-rounded">play_circle</span></div><div><div class="name">Watch Later</div><div class="count">23 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-read)"><div class="icon" style="background:var(--cat-read)"><span class="material-symbols-rounded">menu_book</span></div><div><div class="name">Read Later</div><div class="count">41 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-shop)"><div class="icon" style="background:var(--cat-shop)"><span class="material-symbols-rounded">shopping_bag</span></div><div><div class="name">Shopping</div><div class="count">2 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-idea)"><div class="icon" style="background:var(--cat-idea)"><span class="material-symbols-rounded">lightbulb</span></div><div><div class="name">Idea</div><div class="count">9 items</div></div></div>
+            <div class="cat-tile" style="--tint:var(--cat-link)"><div class="icon" style="background:var(--cat-link)"><span class="material-symbols-rounded">link</span></div><div><div class="name">Link</div><div class="count">29 items</div></div></div>
+          </div>
+        </div>
+
+        <div class="nav">
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">inbox</span></div>Inbox</div>
+          <div class="tab active"><div class="pill"><span class="material-symbols-rounded">grid_view</span></div>Browse</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">alarm</span></div>Remind</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">person</span></div>Me</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ 4. REMINDERS ============ -->
+    <div class="screen-wrap">
+      <h2>4 · Reminders</h2>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span></div></div>
+        <div class="app-bar">
+          <div><div class="title">Reminders</div><div class="subtitle">3 upcoming</div></div>
+          <div class="actions"><div class="icon-btn"><span class="material-symbols-rounded">add</span></div></div>
+        </div>
+        <div class="body" style="overflow-y:auto">
+          <div class="section-label">Upcoming</div>
+          <div class="timeline">
+            <div class="t-row">
+              <div class="rail"><div class="dot"></div></div>
+              <div>
+                <div class="when">Tomorrow · 9:00 AM</div>
+                <div class="what">Send Arjun the deck</div>
+                <div class="sub">From promise · 2h ago</div>
+              </div>
+            </div>
+            <div class="t-row">
+              <div class="rail"><div class="dot" style="background:var(--cat-reminder);box-shadow:0 0 0 3px color-mix(in srgb,var(--cat-reminder) 20%,transparent)"></div></div>
+              <div>
+                <div class="when">Fri, May 15 · 6:30 PM</div>
+                <div class="what">Call mom</div>
+                <div class="sub">Weekly</div>
+              </div>
+            </div>
+            <div class="t-row">
+              <div class="rail"><div class="dot" style="background:var(--cat-task);box-shadow:0 0 0 3px color-mix(in srgb,var(--cat-task) 20%,transparent)"></div></div>
+              <div>
+                <div class="when">Mon, May 18 · 10:00 AM</div>
+                <div class="what">Submit expense report</div>
+                <div class="sub">#work</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label">Past</div>
+          <div class="timeline">
+            <div class="t-row past">
+              <div class="rail"><div class="dot"></div></div>
+              <div>
+                <div class="when">Yesterday · 8:00 AM</div>
+                <div class="what">Pay rent</div>
+                <div class="sub">✓ Completed</div>
+              </div>
+            </div>
+            <div class="t-row past">
+              <div class="rail"><div class="dot"></div></div>
+              <div>
+                <div class="when">Sun, May 10 · 7:30 PM</div>
+                <div class="what">Book dentist appointment</div>
+                <div class="sub">✓ Completed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nav">
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">inbox</span></div>Inbox</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">grid_view</span></div>Browse</div>
+          <div class="tab active"><div class="pill"><span class="material-symbols-rounded">alarm</span></div>Remind</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">person</span></div>Me</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ 5. MEMORY DETAIL ============ -->
+    <div class="screen-wrap">
+      <h2>5 · Memory Detail</h2>
+      <div class="phone"><div class="screen">
+        <div class="status"><span>9:41</span><div class="dots"><span class="bar"></span></div></div>
+        <div class="app-bar">
+          <div class="icon-btn"><span class="material-symbols-rounded">arrow_back</span></div>
+          <div class="actions">
+            <div class="icon-btn"><span class="material-symbols-rounded">push_pin</span></div>
+            <div class="icon-btn"><span class="material-symbols-rounded">alarm</span></div>
+            <div class="icon-btn"><span class="material-symbols-rounded">more_horiz</span></div>
+          </div>
+        </div>
+        <div class="body" style="overflow-y:auto;padding-top:8px">
+          <div class="detail-hero">
+            <span class="cat-pill"><span class="material-symbols-rounded">handshake</span>Promise</span>
+          </div>
+          <div class="detail-body">I'll send Arjun the deck tomorrow morning before the review.</div>
+          <div class="detail-tags">
+            <span class="tag accent">#work</span>
+            <span class="tag accent">#follow-up</span>
+          </div>
+
+          <div style="padding:0 6px">
+            <div class="meta-row"><span class="k">Captured from</span><span class="v">Share · WhatsApp</span></div>
+            <div class="meta-row"><span class="k">Created</span><span class="v">May 11, 2026 · 2:14 PM</span></div>
+            <div class="meta-row"><span class="k">Reminder</span><span class="v" style="color:var(--cat-reminder)">Tue May 12 · 9:00 AM</span></div>
+            <div class="meta-row"><span class="k">Category</span><span class="v">Promise (auto)</span></div>
+          </div>
+
+          <div class="detail-cta" style="padding:0 6px">
+            <button class="btn-ghost">Edit reminder</button>
+            <button class="btn-primary">Mark done</button>
+          </div>
+        </div>
+
+        <div class="nav">
+          <div class="tab active"><div class="pill"><span class="material-symbols-rounded">inbox</span></div>Inbox</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">grid_view</span></div>Browse</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">alarm</span></div>Remind</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">person</span></div>Me</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ 6. DARK MODE ============ -->
+    <div class="screen-wrap">
+      <h2>6 · Inbox (Dark)</h2>
+      <div class="phone"><div class="screen dark">
+        <div class="status"><span>9:41</span><div class="dots"><span class="bar" style="border-color:var(--on-surface)"></span></div></div>
+        <div class="app-bar">
+          <div>
+            <div class="title">Inbox</div>
+            <div class="subtitle">Your private second brain</div>
+          </div>
+          <div class="actions">
+            <div class="icon-btn"><span class="material-symbols-rounded">search</span></div>
+            <div class="icon-btn"><span class="material-symbols-rounded">tune</span></div>
+          </div>
+        </div>
+        <div class="body" style="overflow-y:auto">
+          <div class="segment">
+            <div class="active">All</div>
+            <div>Today</div>
+            <div>Pinned</div>
+            <div>Archive</div>
+          </div>
+
+          <div class="section-label"><span class="material-symbols-rounded">push_pin</span>Pinned</div>
+          <div class="pinned-card">
+            <div class="top">
+              <span class="material-symbols-rounded">handshake</span>
+              <span class="label">Promise</span>
+              <span style="margin-left:auto;font-size:11px;color:#FCD34D;font-weight:600">2h ago</span>
+            </div>
+            <div class="text">"I'll send Arjun the deck tomorrow morning before the review."</div>
+          </div>
+
+          <div class="section-label">Today</div>
+          <div class="card">
+            <div class="badge" style="background:var(--cat-link)"><span class="material-symbols-rounded">link</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Link</span><span class="time">11:24 AM</span></div>
+              <div class="url">arxiv.org/abs/2401.10515</div>
+              <div class="text">Mixture of Depths — dynamic compute in transformers.</div>
+              <div class="meta-row">
+                <span class="tag accent">Read Later</span>
+                <span class="tag">#ml</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="thumb"><span class="material-symbols-rounded">image</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Screenshot</span><span class="time">10:02 AM</span></div>
+              <div class="text">OCR: "Flight IX 2042 · Gate B12 · Boarding 14:30"</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="badge" style="background:var(--cat-idea)"><span class="material-symbols-rounded">lightbulb</span></div>
+            <div class="body-col">
+              <div class="top"><span class="label">Idea</span><span class="time">8:17 PM</span></div>
+              <div class="text">A weekly digest of saved links, on-device only.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fab"><span class="material-symbols-rounded">add</span></div>
+
+        <div class="nav">
+          <div class="tab active"><div class="pill"><span class="material-symbols-rounded">inbox</span></div>Inbox</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">grid_view</span></div>Browse</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">alarm</span></div>Remind</div>
+          <div class="tab"><div class="pill"><span class="material-symbols-rounded">person</span></div>Me</div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <h3>Design tokens · from your codebase</h3>
+    <div class="swatches">
+      <div class="sw"><span class="dot" style="background:#4F46E5"></span>Primary · #4F46E5</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-reminder)"></span>Reminder</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-promise)"></span>Promise</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-task)"></span>Task</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-watch)"></span>Watch Later</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-read)"></span>Read Later</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-shop)"></span>Shopping</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-study)"></span>Study</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-work)"></span>Work</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-idea)"></span>Idea</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-important)"></span>Important</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-link)"></span>Link</div>
+      <div class="sw"><span class="dot" style="background:var(--cat-note)"></span>Note</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
