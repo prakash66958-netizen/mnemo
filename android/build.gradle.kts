@@ -36,6 +36,21 @@ subprojects {
         }
     }
 
+    // Force a modern compileSdk on every Android library subproject. Isar 3's
+    // bundled resources reference attrs (`android:attr/lStar`) that only
+    // exist on compileSdk 31+; without this release builds fail with
+    // "resource android:attr/lStar not found" during R8 resource
+    // verification. afterEvaluate is required because AGP sets compileSdk
+    // during its own evaluate phase; setting it inside plugins.withId runs
+    // too early.
+    afterEvaluate {
+        if (project.plugins.hasPlugin("com.android.library")) {
+            extensions.configure(com.android.build.gradle.LibraryExtension::class.java) {
+                compileSdk = 35
+            }
+        }
+    }
+
     // Align every Kotlin compilation in every subproject to JVM 17. Without
     // this, some plugins compile Kotlin against JVM 21 while their Java is
     // still 1.8, which fails AGP's "Inconsistent JVM Target" check.
