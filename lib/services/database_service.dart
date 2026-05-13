@@ -36,40 +36,35 @@ class DatabaseService {
   /// If the schema has changed since the last install (e.g. new collections
   /// like Habit/HabitCompletion were added), Isar 3 will throw on open. We
   /// catch that, delete the old DB file, and re-open with the new schema.
-  /// This loses existing data on a schema-breaking upgrade — acceptable for
-  /// a pre-1.0 app; a production release should use Isar's migration API or
-  /// export-before-upgrade flow.
   Future<void> open() async {
     if (isOpen) return;
     final dir = await getApplicationDocumentsDirectory();
+    final schemas = [
+      MemoryItemSchema,
+      ReminderSchema,
+      HabitSchema,
+      HabitCompletionSchema,
+    ];
     try {
       _isar = await Isar.open(
-        [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
+        schemas,
         directory: dir.path,
         name: AppConstants.dbName,
         inspector: false,
       );
-    } catch (e) {
-      // Schema mismatch — nuke the old DB and retry.
-      try {
-        await Isar.open(
-          [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
-          directory: dir.path,
-          name: AppConstants.dbName,
-          inspector: false,
-        ).then((db) async {
-          await db.close(deleteFromDisk: true);
-        });
-      } catch (_) {
-        // If even that fails, try deleting the file manually.
-        final dbFile = '${dir.path}/${AppConstants.dbName}.isar';
+    } catch (_) {
+      // Schema mismatch or corrupt DB — delete and retry.
+      // Delete all possible Isar files for this DB name.
+      final basePath = '${dir.path}/${AppConstants.dbName}';
+      for (final ext in ['.isar', '.isar.lock']) {
         try {
-          final f = java_io.File(dbFile);
-          if (await f.exists()) await f.delete();
+          final f = java_io.File('$basePath$ext');
+          if (f.existsSync()) f.deleteSync();
         } catch (_) {}
       }
+      // Retry open — this time it's a fresh DB.
       _isar = await Isar.open(
-        [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
+        schemas,
         directory: dir.path,
         name: AppConstants.dbName,
         inspector: false,

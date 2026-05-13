@@ -53,17 +53,29 @@ class _MnemoAppState extends ConsumerState<MnemoApp> {
   }
 
   Future<void> _bootstrap() async {
-    // Reschedule any active reminders after restart.
-    await ReminderRepository.instance.rescheduleAll();
-    // Reschedule daily habit notifications.
-    await HabitRepository.instance.rescheduleAll();
-    // Subscribe to pending shares BEFORE starting the service so cold-start
-    // shares (which fire synchronously during start()) aren't missed.
-    ShareIntentService.instance.pendingShare.listen(_showSharePreview);
-    // Kick off share-intent listening.
-    await ShareIntentService.instance.start();
+    try {
+      // Reschedule any active reminders after restart.
+      await ReminderRepository.instance.rescheduleAll();
+    } catch (_) {
+      // Non-fatal: reminders won't fire until next app start, but the app
+      // must not hang on the splash screen.
+    }
+    try {
+      // Reschedule daily habit notifications.
+      await HabitRepository.instance.rescheduleAll();
+    } catch (_) {}
+    try {
+      // Subscribe to pending shares BEFORE starting the service so cold-start
+      // shares (which fire synchronously during start()) aren't missed.
+      ShareIntentService.instance.pendingShare.listen(_showSharePreview);
+      // Kick off share-intent listening.
+      await ShareIntentService.instance.start();
+    } catch (_) {}
     // Check whether to show onboarding.
-    final done = await SettingsService.instance.getOnboardingDone();
+    bool done = false;
+    try {
+      done = await SettingsService.instance.getOnboardingDone();
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _showOnboarding = !done;
