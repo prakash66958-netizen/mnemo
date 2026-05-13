@@ -56,7 +56,13 @@ class GoogleDriveService {
     'profile',
   ];
 
-  final _googleSignIn = GoogleSignIn(scopes: _scopes);
+  final _googleSignIn = GoogleSignIn(
+    scopes: _scopes,
+    // The web client ID from google-services.json (type 3 client).
+    // Required on Android to get auth tokens that work with REST APIs.
+    serverClientId:
+        '349111968816-fd836995l9dapspdng2j3mq54f0ao7de.apps.googleusercontent.com',
+  );
 
   GoogleSignInAccount? _currentUser;
   GoogleSignInAccount? get currentUser => _currentUser;
