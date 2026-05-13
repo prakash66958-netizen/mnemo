@@ -7,6 +7,7 @@ import '../../models/reminder.dart';
 import '../../services/database_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/reminder_repository.dart';
+import '../shared/providers.dart';
 
 /// Create or edit a reminder. Aligned with the detail screen's visual style.
 class ReminderEditScreen extends StatefulWidget {
@@ -110,13 +111,12 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
           await NotificationService.instance.hasNotificationPermission();
       if (!mounted) return;
       if (!notificationsOk) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Notifications are disabled. Enable them in system settings '
-              'for Mnemo so reminders can alert you.',
-            ),
-          ),
+        showAppToast(
+          'Reminder saved · Notifications are disabled in system settings',
+        );
+      } else {
+        showAppToast(
+          _existing != null ? 'Reminder updated' : 'Reminder created',
         );
       }
       if (!mounted) return;

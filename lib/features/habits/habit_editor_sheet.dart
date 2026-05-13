@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/habit.dart';
 import '../../services/habit_repository.dart';
+import '../shared/providers.dart';
 
 /// Bottom sheet for creating or editing a habit.
 class HabitEditorSheet extends StatefulWidget {
@@ -90,7 +91,12 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
           await HabitRepository.instance.update(h);
         }
       }
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        showAppToast(
+          widget.existing == null ? 'Habit created' : 'Habit updated',
+        );
+        Navigator.of(context).pop();
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

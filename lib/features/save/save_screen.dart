@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app.dart';
 import '../../core/category.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../models/memory_item.dart';
@@ -8,6 +9,7 @@ import '../../services/category_service.dart';
 import '../../services/classifier_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/promise_detector.dart';
+import '../shared/providers.dart';
 
 /// Full-screen note editor used when the user shares text into the app or
 /// taps a link with a long content body.
@@ -143,10 +145,12 @@ class _SaveScreenState extends State<SaveScreen> {
       forcedCategoryId: _category.isBuiltin ? null : _category.id,
     );
     if (!mounted) return;
+    // Only auto-redirect to reminder creation if the CLASSIFIER detected a
+    // promise (not just because the user manually picked the Promise/Reminder
+    // category). This prevents the confusing "I just wanted to save a note in
+    // Promise category" → forced into reminder flow.
     final detection = PromiseDetector.instance.detect(text);
-    final builtin = _category.builtin;
-    if (builtin == MemoryCategory.promise ||
-        builtin == MemoryCategory.reminder) {
+    if (detection.hasPromise && !_pinnedByCaller) {
       context.go('/reminder/new', extra: {
         'memoryId': mem.id,
         'text': detection.action ?? text,
@@ -154,14 +158,10 @@ class _SaveScreenState extends State<SaveScreen> {
       });
     } else {
       context.go('/');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Saved'),
-          action: SnackBarAction(
-            label: 'Open',
-            onPressed: () => context.push('/memory/${mem.id}'),
-          ),
-        ),
+      showAppToast(
+        'Saved',
+        actionLabel: 'Open',
+        onAction: () => appRouter.push('/memory/${mem.id}'),
       );
     }
   }
