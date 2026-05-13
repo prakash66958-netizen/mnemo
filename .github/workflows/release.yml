@@ -43,19 +43,32 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           echo "flutter.sdk=$(which flutter | xargs dirname | xargs dirname)" >> android/local.properties
 
-      # ── 5. Flutter doctor ────────────────────────────────────────────────
+      # ── 5. Decode release keystore from secret ────────────────────────────
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+
+      # ── 6. Write key.properties for Gradle signing ────────────────────────
+      - name: Write key.properties
+        run: |
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=release.jks" >> android/key.properties
+
+      # ── 7. Flutter doctor ────────────────────────────────────────────────
       - name: Flutter doctor
         run: flutter doctor -v
 
-      # ── 6. Install dependencies ──────────────────────────────────────────
+      # ── 8. Install dependencies ──────────────────────────────────────────
       - name: Install dependencies
         run: flutter pub get
 
-      # ── 7. Build release APK ─────────────────────────────────────────────
+      # ── 9. Build release APK ─────────────────────────────────────────────
       - name: Build release APK
         run: flutter build apk --release
 
-      # ── 8. Rename APK to include version ─────────────────────────────────
+      # ── 10. Rename APK to include version ────────────────────────────────
       - name: Rename APK
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \

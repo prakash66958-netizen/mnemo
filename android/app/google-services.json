@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "349111968816-4q3qrssqsokq2j4rqargdg5crdtbgq0e.apps.googleusercontent.com",
+          "client_id": "349111968816-pcaru8v1n2bv4n39gu51u5ervgdgjj1o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.mnemo.mnemo",
-            "certificate_hash": "e6de9954300e206efcc7918983e71719026dfb7d"
+            "certificate_hash": "82f36128b0657abf2616373eb7948fcf284e3470"
           }
         },
         {

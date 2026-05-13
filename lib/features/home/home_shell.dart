@@ -7,7 +7,7 @@ import '../../app.dart';
 import '../../services/share_intent_service.dart';
 import '../../widgets/mnemo_nav_bar.dart';
 import '../categories/categories_tab.dart';
-import '../habits/habits_tab.dart';
+import '../focus/focus_tab.dart';
 import '../inbox/inbox_tab.dart';
 import '../reminder/reminders_tab.dart';
 import '../settings/settings_tab.dart';
@@ -32,7 +32,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     _tabs = const [
       InboxTab(),
       CategoriesTab(),
-      HabitsTab(),
+      FocusTab(),
       RemindersTab(),
       SettingsTab(),
     ];
@@ -135,9 +135,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             label: 'Browse',
           ),
           MnemoNavItem(
-            icon: Icons.check_circle_outline_rounded,
-            activeIcon: Icons.check_circle_rounded,
-            label: 'Habits',
+            icon: Icons.center_focus_weak_outlined,
+            activeIcon: Icons.center_focus_strong_rounded,
+            label: 'Focus',
           ),
           MnemoNavItem(
             icon: Icons.alarm_outlined,

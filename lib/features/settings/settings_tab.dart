@@ -288,6 +288,7 @@ class _GoogleDriveRow extends ConsumerStatefulWidget {
 
 class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
   bool _syncing = false;
+  bool _signInFailed = false; // true after a sign-in failure, reset on retry
 
   String _syncLabel(DateTime? last) {
     if (last == null) return 'Never synced';
@@ -300,7 +301,10 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
   }
 
   Future<void> _signIn() async {
-    setState(() => _syncing = true);
+    setState(() {
+      _syncing = true;
+      _signInFailed = false;
+    });
     try {
       final account = await GoogleDriveService.instance.signIn();
       if (account == null || !mounted) {
@@ -322,6 +326,7 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
       }
     } catch (e) {
       if (!mounted) return;
+      setState(() => _signInFailed = true);
       final msg = e.toString();
       final friendly = msg.contains('sign_in_canceled')
           ? null
@@ -389,10 +394,16 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
     // ── Not signed in ────────────────────────────────────────────────────────
     if (email == null) {
       return _Row(
-        icon: Icons.add_to_drive_rounded,
-        iconColor: const Color(0xFF4285F4),
+        icon: _signInFailed
+            ? Icons.error_outline_rounded
+            : Icons.add_to_drive_rounded,
+        iconColor: _signInFailed
+            ? scheme.error
+            : const Color(0xFF4285F4),
         title: 'Back up to Google Drive',
-        subtitle: 'Auto-sync your data across devices',
+        subtitle: _signInFailed
+            ? 'Sign-in failed — tap to retry'
+            : 'Auto-sync your data across devices',
         onTap: _syncing ? null : _signIn,
         trailing: _syncing
             ? SizedBox(
@@ -401,7 +412,9 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: scheme.primary),
               )
-            : null,
+            : _signInFailed
+                ? Icon(Icons.close_rounded, color: scheme.error, size: 22)
+                : null,
       );
     }
 
