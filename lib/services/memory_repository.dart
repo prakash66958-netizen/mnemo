@@ -196,6 +196,37 @@ class MemoryRepository {
     await update(item);
   }
 
+  /// Links two entries bidirectionally.
+  Future<void> linkEntries(MemoryItem a, MemoryItem b) async {
+    if (!a.linkedIds.contains(b.id)) {
+      a.linkedIds = [...a.linkedIds, b.id];
+      await update(a);
+    }
+    if (!b.linkedIds.contains(a.id)) {
+      b.linkedIds = [...b.linkedIds, a.id];
+      await update(b);
+    }
+  }
+
+  /// Removes a link between two entries bidirectionally.
+  Future<void> unlinkEntries(MemoryItem a, MemoryItem b) async {
+    a.linkedIds = a.linkedIds.where((id) => id != b.id).toList();
+    await update(a);
+    b.linkedIds = b.linkedIds.where((id) => id != a.id).toList();
+    await update(b);
+  }
+
+  /// Fetches all entries linked to [item].
+  Future<List<MemoryItem>> getLinked(MemoryItem item) async {
+    if (item.linkedIds.isEmpty) return const [];
+    final results = <MemoryItem>[];
+    for (final id in item.linkedIds) {
+      final m = await _isar.memoryItems.get(id);
+      if (m != null) results.add(m);
+    }
+    return results;
+  }
+
   // ---------------------------------------------------------------------------
   // Queries
   // ---------------------------------------------------------------------------

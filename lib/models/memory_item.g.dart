@@ -72,53 +72,58 @@ const MemoryItemSchema = CollectionSchema(
       name: r'imagePath',
       type: IsarType.string,
     ),
-    r'locationName': PropertySchema(
+    r'linkedIds': PropertySchema(
       id: 11,
+      name: r'linkedIds',
+      type: IsarType.longList,
+    ),
+    r'locationName': PropertySchema(
+      id: 12,
       name: r'locationName',
       type: IsarType.string,
     ),
     r'locationUrl': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'locationUrl',
       type: IsarType.string,
     ),
     r'pinned': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'pinned',
       type: IsarType.bool,
     ),
     r'rawUrl': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'rawUrl',
       type: IsarType.string,
     ),
     r'reminderPromptHandled': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'reminderPromptHandled',
       type: IsarType.bool,
     ),
     r'searchTokens': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'searchTokens',
       type: IsarType.stringList,
     ),
     r'sourceType': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'sourceType',
       type: IsarType.string,
     ),
     r'tags': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'title': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -257,6 +262,7 @@ int _memoryItemEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.linkedIds.length * 8;
   {
     final value = object.locationName;
     if (value != null) {
@@ -316,16 +322,17 @@ void _memoryItemSerialize(
   writer.writeBool(offsets[8], object.doneInInbox);
   writer.writeBool(offsets[9], object.hasPromise);
   writer.writeString(offsets[10], object.imagePath);
-  writer.writeString(offsets[11], object.locationName);
-  writer.writeString(offsets[12], object.locationUrl);
-  writer.writeBool(offsets[13], object.pinned);
-  writer.writeString(offsets[14], object.rawUrl);
-  writer.writeBool(offsets[15], object.reminderPromptHandled);
-  writer.writeStringList(offsets[16], object.searchTokens);
-  writer.writeString(offsets[17], object.sourceType);
-  writer.writeStringList(offsets[18], object.tags);
-  writer.writeString(offsets[19], object.title);
-  writer.writeDateTime(offsets[20], object.updatedAt);
+  writer.writeLongList(offsets[11], object.linkedIds);
+  writer.writeString(offsets[12], object.locationName);
+  writer.writeString(offsets[13], object.locationUrl);
+  writer.writeBool(offsets[14], object.pinned);
+  writer.writeString(offsets[15], object.rawUrl);
+  writer.writeBool(offsets[16], object.reminderPromptHandled);
+  writer.writeStringList(offsets[17], object.searchTokens);
+  writer.writeString(offsets[18], object.sourceType);
+  writer.writeStringList(offsets[19], object.tags);
+  writer.writeString(offsets[20], object.title);
+  writer.writeDateTime(offsets[21], object.updatedAt);
 }
 
 MemoryItem _memoryItemDeserialize(
@@ -347,16 +354,17 @@ MemoryItem _memoryItemDeserialize(
   object.hasPromise = reader.readBool(offsets[9]);
   object.id = id;
   object.imagePath = reader.readStringOrNull(offsets[10]);
-  object.locationName = reader.readStringOrNull(offsets[11]);
-  object.locationUrl = reader.readStringOrNull(offsets[12]);
-  object.pinned = reader.readBool(offsets[13]);
-  object.rawUrl = reader.readStringOrNull(offsets[14]);
-  object.reminderPromptHandled = reader.readBool(offsets[15]);
-  object.searchTokens = reader.readStringList(offsets[16]) ?? [];
-  object.sourceType = reader.readString(offsets[17]);
-  object.tags = reader.readStringList(offsets[18]) ?? [];
-  object.title = reader.readStringOrNull(offsets[19]);
-  object.updatedAt = reader.readDateTime(offsets[20]);
+  object.linkedIds = reader.readLongList(offsets[11]) ?? [];
+  object.locationName = reader.readStringOrNull(offsets[12]);
+  object.locationUrl = reader.readStringOrNull(offsets[13]);
+  object.pinned = reader.readBool(offsets[14]);
+  object.rawUrl = reader.readStringOrNull(offsets[15]);
+  object.reminderPromptHandled = reader.readBool(offsets[16]);
+  object.searchTokens = reader.readStringList(offsets[17]) ?? [];
+  object.sourceType = reader.readString(offsets[18]);
+  object.tags = reader.readStringList(offsets[19]) ?? [];
+  object.title = reader.readStringOrNull(offsets[20]);
+  object.updatedAt = reader.readDateTime(offsets[21]);
   return object;
 }
 
@@ -390,24 +398,26 @@ P _memoryItemDeserializeProp<P>(
     case 10:
       return (reader.readStringOrNull(offset)) as P;
     case 11:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 12:
       return (reader.readStringOrNull(offset)) as P;
     case 13:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 14:
-      return (reader.readStringOrNull(offset)) as P;
-    case 15:
       return (reader.readBool(offset)) as P;
-    case 16:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 17:
-      return (reader.readString(offset)) as P;
-    case 18:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 19:
+    case 15:
       return (reader.readStringOrNull(offset)) as P;
+    case 16:
+      return (reader.readBool(offset)) as P;
+    case 17:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 18:
+      return (reader.readString(offset)) as P;
+    case 19:
+      return (reader.readStringList(offset) ?? []) as P;
     case 20:
+      return (reader.readStringOrNull(offset)) as P;
+    case 21:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2032,6 +2042,151 @@ extension MemoryItemQueryFilter
         property: r'imagePath',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'linkedIds',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'linkedIds',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'linkedIds',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'linkedIds',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      linkedIdsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'linkedIds',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -3852,6 +4007,12 @@ extension MemoryItemQueryWhereDistinct
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByLinkedIds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'linkedIds');
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByLocationName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3990,6 +4151,12 @@ extension MemoryItemQueryProperty
   QueryBuilder<MemoryItem, String?, QQueryOperations> imagePathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'imagePath');
+    });
+  }
+
+  QueryBuilder<MemoryItem, List<int>, QQueryOperations> linkedIdsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'linkedIds');
     });
   }
 

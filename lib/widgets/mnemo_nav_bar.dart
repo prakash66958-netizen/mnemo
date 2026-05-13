@@ -98,7 +98,7 @@ class _NavTab extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
-            width: 56,
+            width: 48,
             height: 30,
             decoration: BoxDecoration(
               color: pillBg,
@@ -106,7 +106,7 @@ class _NavTab extends StatelessWidget {
             ),
             child: Icon(
               active ? item.activeIcon : item.icon,
-              size: 22,
+              size: 20,
               color: pillFg,
             ),
           ),
@@ -114,7 +114,7 @@ class _NavTab extends StatelessWidget {
           Text(
             item.label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
               color: labelFg,
             ),

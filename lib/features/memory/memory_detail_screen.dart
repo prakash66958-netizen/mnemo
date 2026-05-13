@@ -190,6 +190,9 @@ class MemoryDetailScreen extends ConsumerWidget {
                     category: category,
                   ),
                   const SizedBox(height: 18),
+                  // Linked entries section
+                  _LinkedEntriesSection(item: item),
+                  const SizedBox(height: 18),
                   _CTARow(item: item, reminder: linkedReminder),
                 ],
               ),
@@ -837,6 +840,408 @@ class _ChecklistViewState extends State<_ChecklistView> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shows linked entries and lets the user add/remove links.
+class _LinkedEntriesSection extends StatefulWidget {
+  const _LinkedEntriesSection({required this.item});
+  final MemoryItem item;
+
+  @override
+  State<_LinkedEntriesSection> createState() => _LinkedEntriesSectionState();
+}
+
+class _LinkedEntriesSectionState extends State<_LinkedEntriesSection> {
+  List<MemoryItem> _linked = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final items = await MemoryRepository.instance.getLinked(widget.item);
+    if (!mounted) return;
+    setState(() {
+      _linked = items;
+      _loading = false;
+    });
+  }
+
+  Future<void> _addLink(BuildContext context) async {
+    final picked = await showModalBottomSheet<MemoryItem>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _LinkPickerSheet(
+        excludeId: widget.item.id,
+        alreadyLinked: widget.item.linkedIds,
+      ),
+    );
+    if (picked == null) return;
+    await MemoryRepository.instance.linkEntries(widget.item, picked);
+    _load();
+  }
+
+  Future<void> _removeLink(MemoryItem other) async {
+    await MemoryRepository.instance.unlinkEntries(widget.item, other);
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'RELATED',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: () => _addLink(context),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_link_rounded,
+                        size: 16, color: scheme.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Link entry',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_loading)
+          const SizedBox(
+            height: 40,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_linked.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'No linked entries yet. Tap "Link entry" to connect related memories.',
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+          )
+        else
+          for (final linked in _linked)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _LinkedCard(
+                item: linked,
+                onRemove: () => _removeLink(linked),
+              ),
+            ),
+      ],
+    );
+  }
+}
+
+class _LinkedCard extends StatelessWidget {
+  const _LinkedCard({required this.item, required this.onRemove});
+  final MemoryItem item;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/memory/${item.id}'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          child: Row(
+            children: [
+              Icon(Icons.link_rounded,
+                  size: 16, color: scheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.title != null && item.title!.isNotEmpty)
+                      Text(
+                        item.title!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    Text(
+                      item.content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.link_off_rounded,
+                    size: 18, color: scheme.onSurfaceVariant),
+                onPressed: onRemove,
+                tooltip: 'Remove link',
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for picking an entry to link to.
+class _LinkPickerSheet extends StatefulWidget {
+  const _LinkPickerSheet({
+    required this.excludeId,
+    required this.alreadyLinked,
+  });
+  final int excludeId;
+  final List<int> alreadyLinked;
+
+  @override
+  State<_LinkPickerSheet> createState() => _LinkPickerSheetState();
+}
+
+class _LinkPickerSheetState extends State<_LinkPickerSheet> {
+  final _ctrl = TextEditingController();
+  List<MemoryItem> _results = const [];
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_onChanged);
+    // Show recent entries by default
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    setState(() => _searching = true);
+    final all = await MemoryRepository.instance.search('');
+    // search('') returns empty — load from inbox stream instead
+    // We'll just show a hint to type something
+    if (mounted) setState(() => _searching = false);
+  }
+
+  void _onChanged() {
+    final q = _ctrl.text.trim();
+    if (q.isEmpty) {
+      setState(() => _results = const []);
+      return;
+    }
+    setState(() => _searching = true);
+    _runSearch(q);
+  }
+
+  Future<void> _runSearch(String q) async {
+    final raw = await MemoryRepository.instance.search(q);
+    if (!mounted || _ctrl.text.trim() != q) return;
+    final filtered = raw
+        .where((m) =>
+            m.id != widget.excludeId &&
+            !widget.alreadyLinked.contains(m.id))
+        .toList();
+    setState(() {
+      _results = filtered;
+      _searching = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Column(
+        children: [
+          // Handle + header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.add_link_rounded,
+                        color: scheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Link to entry',
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _ctrl,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Search entries to link…',
+                      prefixIcon: Icon(Icons.search_rounded,
+                          color: scheme.onSurfaceVariant, size: 20),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Results
+          Expanded(
+            child: _ctrl.text.trim().isEmpty
+                ? Center(
+                    child: Text(
+                      'Type to search your memories',
+                      style: TextStyle(
+                          color: scheme.onSurfaceVariant, fontSize: 14),
+                    ),
+                  )
+                : _searching
+                    ? const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : _results.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No results',
+                              style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 14),
+                            ),
+                          )
+                        : ListView.separated(
+                            controller: controller,
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                            itemCount: _results.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, i) {
+                              final m = _results[i];
+                              return Material(
+                                color: scheme.surfaceContainerHigh,
+                                borderRadius: BorderRadius.circular(12),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: () =>
+                                      Navigator.of(context).pop(m),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (m.title != null &&
+                                            m.title!.isNotEmpty)
+                                          Text(
+                                            m.title!,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        Text(
+                                          m.content,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: scheme.onSurfaceVariant,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+          ),
         ],
       ),
     );

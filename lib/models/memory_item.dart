@@ -70,6 +70,9 @@ class MemoryItem {
   /// Optional color override if the user wants a non-default card tint.
   int? colorValue;
 
+  /// IDs of related entries linked to this one (bidirectional).
+  List<int> linkedIds = const [];
+
   /// When true, this item uses checklist/bullet mode (list of items).
   bool checklistMode = false;
 
