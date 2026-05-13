@@ -10,7 +10,6 @@ import '../categories/categories_tab.dart';
 import '../habits/habits_tab.dart';
 import '../inbox/inbox_tab.dart';
 import '../reminder/reminders_tab.dart';
-import '../search/search_tab.dart';
 import '../settings/settings_tab.dart';
 import '../shared/providers.dart';
 import 'quick_add_sheet.dart';
@@ -32,7 +31,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     super.initState();
     _tabs = const [
       InboxTab(),
-      SearchTab(),
       CategoriesTab(),
       HabitsTab(),
       RemindersTab(),
@@ -130,11 +128,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             icon: Icons.inbox_outlined,
             activeIcon: Icons.inbox_rounded,
             label: 'Inbox',
-          ),
-          MnemoNavItem(
-            icon: Icons.search_outlined,
-            activeIcon: Icons.search_rounded,
-            label: 'Search',
           ),
           MnemoNavItem(
             icon: Icons.grid_view_outlined,

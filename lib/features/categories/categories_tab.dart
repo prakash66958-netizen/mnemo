@@ -4,22 +4,87 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/category.dart';
 import '../../core/theme/design_tokens.dart';
+import '../../models/memory_item.dart';
+import '../../services/category_service.dart';
+import '../../services/memory_repository.dart';
 import '../../widgets/memory_card.dart';
 import '../../widgets/memory_actions_sheet.dart';
 import '../../widgets/section_label.dart';
 import '../shared/providers.dart';
 
-/// Browse tab. A 2-column grid of tinted tiles, one per [CategoryDef]
-/// (built-in + custom). Matches screen #3 of the HTML mockup.
-class CategoriesTab extends ConsumerWidget {
+/// Browse tab — category grid + integrated search.
+class CategoriesTab extends ConsumerStatefulWidget {
   const CategoriesTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CategoriesTab> createState() => _CategoriesTabState();
+}
+
+class _CategoriesTabState extends ConsumerState<CategoriesTab> {
+  final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
+
+  List<MemoryItem> _searchResults = const [];
+  bool _searching = false;
+  String _lastQuery = '';
+  String? _filterCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  bool get _isSearching => _searchCtrl.text.trim().isNotEmpty;
+
+  void _onQueryChanged() {
+    final q = _searchCtrl.text.trim();
+    if (q == _lastQuery) return;
+    _lastQuery = q;
+    setState(() {});
+    if (q.isEmpty) {
+      setState(() {
+        _searchResults = const [];
+        _searching = false;
+      });
+      return;
+    }
+    setState(() => _searching = true);
+    _runSearch(q);
+  }
+
+  Future<void> _runSearch(String q) async {
+    final raw = await MemoryRepository.instance.search(q);
+    if (!mounted || _searchCtrl.text.trim() != q) return;
+    final filtered = _filterCategoryId == null
+        ? raw
+        : raw.where((m) => m.categoryId == _filterCategoryId).toList();
+    setState(() {
+      _searchResults = filtered;
+      _searching = false;
+    });
+  }
+
+  void _setFilter(String? id) {
+    setState(() => _filterCategoryId = id);
+    if (_isSearching) _runSearch(_searchCtrl.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final countsAsync = ref.watch(categoryCountsProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
     final inboxAsync = ref.watch(inboxStreamProvider);
+
+    final categories = categoriesAsync.asData?.value ?? const <CategoryDef>[];
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -27,62 +92,121 @@ class CategoriesTab extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            _BrowseAppBar(
-              total: inboxAsync.maybeWhen(
-                data: (v) => v.length,
-                orElse: () => 0,
-              ),
-              categoryCount: categoriesAsync.maybeWhen(
-                data: (list) => list.length,
-                orElse: () => 0,
-              ),
-              onAdd: () => _promptForNewCategory(context, ref),
-            ),
-            Expanded(
-              child: categoriesAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Center(child: Text('Failed: $e')),
-                data: (categories) {
-                  final counts = countsAsync.asData?.value ??
-                      const <String, int>{};
-                  return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+            // ── App bar ──────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      const SectionLabel(label: 'Categories'),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 1.35,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Browse',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            if (!_isSearching)
+                              Text(
+                                '${inboxAsync.maybeWhen(data: (v) => v.length, orElse: () => 0)} memories · ${categories.length} categories',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                      if (!_isSearching)
+                        InkWell(
+                          onTap: () => _promptForNewCategory(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            alignment: Alignment.center,
+                            child: Icon(Icons.add_rounded,
+                                size: 22, color: scheme.onSurface),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Search bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search memories…',
+                        prefixIcon: Icon(Icons.search_rounded,
+                            color: scheme.onSurfaceVariant, size: 20),
+                        suffixIcon: _isSearching
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  _searchFocus.unfocus();
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 13),
+                      ),
+                    ),
+                  ),
+                  // Category filter chips — only shown while searching
+                  if (_isSearching) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 32,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
                         itemCount: categories.length + 1,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (_, i) {
-                          if (i == categories.length) {
-                            return _AddCategoryTile(
-                              onTap: () =>
-                                  _promptForNewCategory(context, ref),
+                          if (i == 0) {
+                            return _SearchChip(
+                              label: 'All',
+                              active: _filterCategoryId == null,
+                              onTap: () => _setFilter(null),
                             );
                           }
-                          final c = categories[i];
-                          return _CategoryTile(
-                            def: c,
-                            count: counts[c.id] ?? 0,
-                            onLongPress: c.isBuiltin
-                                ? null
-                                : () =>
-                                    _showCustomCategoryMenu(context, ref, c),
+                          final c = categories[i - 1];
+                          final active = _filterCategoryId == c.id;
+                          return _SearchChip(
+                            label: c.label,
+                            icon: c.icon,
+                            color: c.color,
+                            active: active,
+                            onTap: () => _setFilter(active ? null : c.id),
                           );
                         },
                       ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ],
               ),
+            ),
+            // ── Body ─────────────────────────────────────────────────────
+            Expanded(
+              child: _isSearching
+                  ? _buildSearchResults(scheme)
+                  : _buildCategoryGrid(countsAsync, categoriesAsync),
             ),
           ],
         ),
@@ -90,8 +214,98 @@ class CategoriesTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _promptForNewCategory(
-      BuildContext context, WidgetRef ref) async {
+  Widget _buildSearchResults(ColorScheme scheme) {
+    if (_searching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off_rounded,
+                  size: 52,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.4)),
+              const SizedBox(height: 16),
+              const Text(
+                'No results',
+                style:
+                    TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Nothing matched "${_searchCtrl.text.trim()}".',
+                style: TextStyle(
+                    fontSize: 13, color: scheme.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+      itemCount: _searchResults.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) => MemoryCard(
+        item: _searchResults[i],
+        onLongPress: () =>
+            showMemoryActionsSheet(context, _searchResults[i]),
+      ),
+    );
+  }
+
+  Widget _buildCategoryGrid(
+    AsyncValue<Map<String, int>> countsAsync,
+    AsyncValue<List<CategoryDef>> categoriesAsync,
+  ) {
+    return categoriesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Failed: $e')),
+      data: (categories) {
+        final counts =
+            countsAsync.asData?.value ?? const <String, int>{};
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+          children: [
+            const SectionLabel(label: 'Categories'),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+              ),
+              itemCount: categories.length + 1,
+              itemBuilder: (_, i) {
+                if (i == categories.length) {
+                  return _AddCategoryTile(
+                    onTap: () => _promptForNewCategory(context),
+                  );
+                }
+                final c = categories[i];
+                return _CategoryTile(
+                  def: c,
+                  count: counts[c.id] ?? 0,
+                  onLongPress: c.isBuiltin
+                      ? null
+                      : () => _showCustomCategoryMenu(context, c),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _promptForNewCategory(BuildContext context) async {
     final name = await showDialog<String>(
       context: context,
       builder: (_) => const _NewCategoryDialog(),
@@ -115,11 +329,7 @@ class CategoriesTab extends ConsumerWidget {
     }
   }
 
-  void _showCustomCategoryMenu(
-    BuildContext context,
-    WidgetRef ref,
-    CategoryDef def,
-  ) {
+  void _showCustomCategoryMenu(BuildContext context, CategoryDef def) {
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
@@ -150,19 +360,13 @@ class CategoriesTab extends ConsumerWidget {
               },
             ),
             ListTile(
-              leading: Icon(
-                Icons.delete_outline_rounded,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              title: Text(
-                'Delete category',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
+              leading: Icon(Icons.delete_outline_rounded,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Delete category',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.error)),
               subtitle: const Text(
-                'Memories inside stay, but will show as generic until re-tagged.',
-              ),
+                  'Memories inside stay, but will show as generic until re-tagged.'),
               onTap: () async {
                 Navigator.of(context).pop();
                 final ok = await showDialog<bool>(
@@ -170,17 +374,14 @@ class CategoriesTab extends ConsumerWidget {
                   builder: (ctx) => AlertDialog(
                     title: Text('Delete "${def.label}"?'),
                     content: const Text(
-                      'This removes the category but not the memories inside it.',
-                    ),
+                        'This removes the category but not the memories inside it.'),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Cancel'),
-                      ),
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Cancel')),
                       FilledButton.tonal(
-                        onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Delete'),
-                      ),
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          child: const Text('Delete')),
                     ],
                   ),
                 );
@@ -196,57 +397,62 @@ class CategoriesTab extends ConsumerWidget {
   }
 }
 
-class _BrowseAppBar extends StatelessWidget {
-  const _BrowseAppBar({
-    required this.total,
-    required this.categoryCount,
-    required this.onAdd,
+/// Small filter chip used in the search results view.
+class _SearchChip extends StatelessWidget {
+  const _SearchChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.icon,
+    this.color,
   });
-  final int total;
-  final int categoryCount;
-  final VoidCallback onAdd;
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Browse',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                Text(
-                  '$total memories · $categoryCount categories',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+    final chipColor = color ?? scheme.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active
+              ? chipColor.withValues(alpha: 0.18)
+              : scheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: active
+                ? chipColor.withValues(alpha: 0.6)
+                : Colors.transparent,
+            width: 1.2,
           ),
-          InkWell(
-            onTap: onAdd,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              child: Icon(Icons.add_rounded,
-                  size: 22, color: scheme.onSurface),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12,
+                  color: active ? chipColor : scheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active ? chipColor : scheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
