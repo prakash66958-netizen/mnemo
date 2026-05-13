@@ -66,6 +66,16 @@ const HabitSchema = CollectionSchema(
       id: 9,
       name: r'remindMinute',
       type: IsarType.long,
+    ),
+    r'targetUnit': PropertySchema(
+      id: 10,
+      name: r'targetUnit',
+      type: IsarType.string,
+    ),
+    r'targetValue': PropertySchema(
+      id: 11,
+      name: r'targetValue',
+      type: IsarType.double,
     )
   },
   estimateSize: _habitEstimateSize,
@@ -109,6 +119,12 @@ int _habitEstimateSize(
     }
   }
   bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.targetUnit;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -128,6 +144,8 @@ void _habitSerialize(
   writer.writeLong(offsets[7], object.notificationId);
   writer.writeLong(offsets[8], object.remindHour);
   writer.writeLong(offsets[9], object.remindMinute);
+  writer.writeString(offsets[10], object.targetUnit);
+  writer.writeDouble(offsets[11], object.targetValue);
 }
 
 Habit _habitDeserialize(
@@ -148,6 +166,8 @@ Habit _habitDeserialize(
   object.notificationId = reader.readLong(offsets[7]);
   object.remindHour = reader.readLongOrNull(offsets[8]);
   object.remindMinute = reader.readLongOrNull(offsets[9]);
+  object.targetUnit = reader.readStringOrNull(offsets[10]);
+  object.targetValue = reader.readDoubleOrNull(offsets[11]);
   return object;
 }
 
@@ -178,6 +198,10 @@ P _habitDeserializeProp<P>(
       return (reader.readLongOrNull(offset)) as P;
     case 9:
       return (reader.readLongOrNull(offset)) as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readDoubleOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1056,6 +1080,94 @@ extension HabitQueryFilter on QueryBuilder<Habit, Habit, QFilterCondition> {
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'targetUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'targetUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetUnitEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'targetUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetValueIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'targetValue',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetValueIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'targetValue',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetValueEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'targetValue',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetValueGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'targetValue',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> targetValueLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'targetValue',
+        value: value,
+        epsilon: epsilon,
       ));
     });
   }

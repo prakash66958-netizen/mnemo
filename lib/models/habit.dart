@@ -36,4 +36,14 @@ class Habit {
 
   /// Stable notification id derived from Isar id.
   late int notificationId;
+
+  // ── Feature 2: Numeric Goals ──────────────────────────────────────────────
+
+  /// Optional numeric target per day (e.g. 8 for "8 glasses of water").
+  /// Null means the habit is a simple binary (done / not done).
+  double? targetValue;
+
+  /// Unit label for the target (e.g. "glasses", "km", "pages", "minutes").
+  /// Only meaningful when [targetValue] is set.
+  String? targetUnit;
 }

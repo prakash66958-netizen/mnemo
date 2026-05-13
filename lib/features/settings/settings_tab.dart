@@ -14,6 +14,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../services/database_service.dart';
 import '../../services/memory_repository.dart';
+import '../../services/settings_service.dart';
 import '../../services/share_out_service.dart';
 import '../../services/update_service.dart';
 import '../shared/providers.dart';
@@ -150,13 +151,7 @@ class SettingsTab extends ConsumerWidget {
                   _Group(
                     title: 'About',
                     children: [
-                      _Row(
-                        icon: Icons.system_update_rounded,
-                        iconColor: const Color(0xFF4F46E5),
-                        title: 'Check for updates',
-                        subtitle: 'Current version: $version',
-                        onTap: () => _checkForUpdates(context),
-                      ),
+                      _UpdateCheckRow(version: version),
                       _Row(
                         icon: Icons.language_rounded,
                         iconColor: const Color(0xFF0EA5E9),
@@ -246,43 +241,6 @@ class SettingsTab extends ConsumerWidget {
     }
   }
 
-  Future<void> _checkForUpdates(BuildContext context) async {
-    // Show a loading indicator while fetching
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const _CheckingDialog(),
-    );
-
-    try {
-      final info = await UpdateService.instance.fetchLatest();
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // close loading dialog
-
-      if (info.isNewer) {
-        await showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          useSafeArea: true,
-          builder: (_) => _UpdateSheet(info: info),
-        );
-      } else {
-        // Already up to date
-        showModalBottomSheet<void>(
-          context: context,
-          builder: (_) => _UpToDateSheet(version: info.version),
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // close loading dialog
-      showModalBottomSheet<void>(
-        context: context,
-        builder: (_) => _UpdateErrorSheet(error: e.toString()),
-      );
-    }
-  }
-
   Future<void> _openWebsite(BuildContext context) async {
     final uri = Uri.parse('https://getmnemo.web.app/');
     try {
@@ -323,6 +281,97 @@ class SettingsTab extends ConsumerWidget {
           const SnackBar(content: Text('All data cleared')),
         );
       }
+    }
+  }
+}
+
+// ── Update check row with "last checked" subtitle ────────────────────────────
+
+class _UpdateCheckRow extends StatefulWidget {
+  const _UpdateCheckRow({required this.version});
+  final String version;
+
+  @override
+  State<_UpdateCheckRow> createState() => _UpdateCheckRowState();
+}
+
+class _UpdateCheckRowState extends State<_UpdateCheckRow> {
+  DateTime? _lastCheck;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastCheck();
+  }
+
+  Future<void> _loadLastCheck() async {
+    final t = await SettingsService.instance.getLastUpdateCheck();
+    if (mounted) setState(() => _lastCheck = t);
+  }
+
+  String get _subtitle {
+    if (_lastCheck == null) {
+      return 'Current version: ${widget.version} · Never checked';
+    }
+    final diff = DateTime.now().difference(_lastCheck!);
+    final String ago;
+    if (diff.inMinutes < 1) {
+      ago = 'just now';
+    } else if (diff.inMinutes < 60) {
+      ago = '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      ago = '${diff.inHours}h ago';
+    } else {
+      ago = '${diff.inDays}d ago';
+    }
+    return 'v${widget.version} · Last checked $ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Row(
+      icon: Icons.system_update_rounded,
+      iconColor: const Color(0xFF4F46E5),
+      title: 'Check for updates',
+      subtitle: _subtitle,
+      onTap: () async {
+        await _checkForUpdates(context);
+        _loadLastCheck(); // refresh the "last checked" label after manual check
+      },
+    );
+  }
+
+  Future<void> _checkForUpdates(BuildContext context) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _CheckingDialog(),
+    );
+    try {
+      final info = await UpdateService.instance.fetchLatest();
+      await SettingsService.instance.setLastUpdateCheck(DateTime.now());
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      if (info.isNewer) {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => _UpdateSheet(info: info),
+        );
+      } else {
+        showModalBottomSheet<void>(
+          context: context,
+          builder: (_) => _UpToDateSheet(version: info.version),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (_) => _UpdateErrorSheet(error: e.toString()),
+      );
     }
   }
 }

@@ -7,8 +7,10 @@ import '../../services/habit_repository.dart';
 import '../../widgets/empty_state.dart';
 import '../shared/providers.dart';
 import 'habit_editor_sheet.dart';
+import 'habit_stats_screen.dart';
 
-/// Main habits screen — shows today's habits with completion toggles.
+/// Main habits screen — shows today's habits with completion toggles,
+/// a weekly review banner, and per-habit numeric goal progress.
 class HabitsTab extends ConsumerWidget {
   const HabitsTab({super.key});
 
@@ -67,11 +69,21 @@ class HabitsTab extends ConsumerWidget {
                       ),
                     );
                   }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    itemCount: habits.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) => _HabitCard(habit: habits[i]),
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                    children: [
+                      // ── Feature 5: Weekly review banner ──────────────
+                      _WeeklyReviewBanner(habitIds: habits.map((h) => h.id).toList()),
+                      const SizedBox(height: 12),
+                      // ── Habit cards ───────────────────────────────────
+                      ...List.generate(
+                        habits.length,
+                        (i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _HabitCard(habit: habits[i]),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -96,6 +108,205 @@ class HabitsTab extends ConsumerWidget {
     );
   }
 }
+
+// ── Feature 5: Weekly Review Banner ──────────────────────────────────────────
+
+class _WeeklyReviewBanner extends StatefulWidget {
+  const _WeeklyReviewBanner({required this.habitIds});
+  final List<int> habitIds;
+
+  @override
+  State<_WeeklyReviewBanner> createState() => _WeeklyReviewBannerState();
+}
+
+class _WeeklyReviewBannerState extends State<_WeeklyReviewBanner> {
+  int _completed = 0;
+  int _total = 0;
+  List<int> _dailyCounts = List.filled(7, 0);
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WeeklyReviewBanner old) {
+    super.didUpdateWidget(old);
+    if (old.habitIds.length != widget.habitIds.length) _load();
+  }
+
+  Future<void> _load() async {
+    final result =
+        await HabitRepository.instance.weeklySummary(widget.habitIds);
+    if (!mounted) return;
+    setState(() {
+      _completed = result.completed;
+      _total = result.total;
+      _dailyCounts = result.dailyCounts;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || _total == 0) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final rate = _total > 0 ? _completed / _total : 0.0;
+    final pct = (rate * 100).round();
+
+    // Motivational message based on rate.
+    final String message;
+    if (pct >= 90) {
+      message = 'Incredible week — you\'re on fire! 🔥';
+    } else if (pct >= 70) {
+      message = 'Great progress this week! Keep it up 💪';
+    } else if (pct >= 50) {
+      message = 'Solid effort — push a little harder 🎯';
+    } else if (pct > 0) {
+      message = 'Every check-in counts. You\'ve got this 🌱';
+    } else {
+      message = 'Start your week strong — check off a habit!';
+    }
+
+    final now = DateTime.now();
+    final weekStart = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    final dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.bar_chart_rounded,
+                size: 18,
+                color: scheme.onPrimaryContainer,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'This week',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$_completed / $_total',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '($pct%)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Day-by-day bar chart.
+          Row(
+            children: List.generate(7, (i) {
+              final day = weekStart.add(Duration(days: i));
+              final isFuture = day.isAfter(now);
+              final isToday = DateUtils.isSameDay(day, now);
+              final count = _dailyCounts[i];
+              final maxCount =
+                  widget.habitIds.isEmpty ? 1 : widget.habitIds.length;
+              final barFill = isFuture
+                  ? 0.0
+                  : maxCount > 0
+                      ? count / maxCount
+                      : 0.0;
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    children: [
+                      // Bar.
+                      SizedBox(
+                        height: 36,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOut,
+                            width: double.infinity,
+                            height: isFuture
+                                ? 4
+                                : (4 + barFill * 32).clamp(4.0, 36.0),
+                            decoration: BoxDecoration(
+                              color: isFuture
+                                  ? scheme.onPrimaryContainer
+                                      .withValues(alpha: 0.15)
+                                  : barFill > 0
+                                      ? scheme.onPrimaryContainer
+                                          .withValues(alpha: 0.85)
+                                      : scheme.onPrimaryContainer
+                                          .withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                              border: isToday
+                                  ? Border.all(
+                                      color: scheme.onPrimaryContainer,
+                                      width: 1.5,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        dayLabels[i],
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: isToday
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                          color: scheme.onPrimaryContainer
+                              .withValues(alpha: isToday ? 1.0 : 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: scheme.onPrimaryContainer.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Habit Card ────────────────────────────────────────────────────────────────
 
 class _HabitCard extends StatefulWidget {
   const _HabitCard({required this.habit});
@@ -123,8 +334,10 @@ class _HabitCardState extends State<_HabitCard> {
   }
 
   Future<void> _load() async {
-    final done = await HabitRepository.instance.isCompletedToday(widget.habit.id);
-    final streak = await HabitRepository.instance.currentStreak(widget.habit.id);
+    final done =
+        await HabitRepository.instance.isCompletedToday(widget.habit.id);
+    final streak =
+        await HabitRepository.instance.currentStreak(widget.habit.id);
     final week = await HabitRepository.instance.last7Days(widget.habit.id);
     if (!mounted) return;
     setState(() {
@@ -148,6 +361,10 @@ class _HabitCardState extends State<_HabitCard> {
       color.withValues(alpha: 0.10),
       scheme.surfaceContainerHigh,
     );
+    final hasGoal = h.targetValue != null && h.targetValue! > 0;
+    // Completion rate over last 7 days as a proxy for today's progress
+    // when there's a goal (binary for now — full credit when done today).
+    final goalProgress = hasGoal ? (_done ? 1.0 : 0.0) : null;
 
     return Material(
       color: bg,
@@ -157,77 +374,131 @@ class _HabitCardState extends State<_HabitCard> {
         onTap: () => _showDetail(context),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 14, 14, 14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Checkbox
-              GestureDetector(
-                onTap: _toggle,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _done ? color : Colors.transparent,
-                    border: Border.all(
-                      color: color,
-                      width: 2.5,
+              Row(
+                children: [
+                  // Checkbox.
+                  GestureDetector(
+                    onTap: _toggle,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _done ? color : Colors.transparent,
+                        border: Border.all(color: color, width: 2.5),
+                      ),
+                      child: _done
+                          ? const Icon(Icons.check_rounded,
+                              size: 20, color: Colors.white)
+                          : null,
                     ),
                   ),
-                  child: _done
-                      ? const Icon(Icons.check_rounded,
-                          size: 20, color: Colors.white)
-                      : null,
-                ),
+                  const SizedBox(width: 12),
+                  // Name + streak.
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${h.emoji ?? ''} ${h.name}'.trim(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        // Goal label or streak.
+                        if (hasGoal)
+                          Text(
+                            'Goal: ${_fmtTarget(h.targetValue!)} ${h.targetUnit ?? ''}'.trim(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          )
+                        else
+                          Text(
+                            _streak > 0
+                                ? '🔥 $_streak day streak'
+                                : (h.remindHour != null
+                                    ? 'Every day at ${_fmtTime(h.remindHour!, h.remindMinute ?? 0)}'
+                                    : 'No reminder'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // 7-day strip.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final d in _week)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: d ? color : Colors.transparent,
+                            border: Border.all(
+                              color: d ? color : scheme.outlineVariant,
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              // Name + streak
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // ── Feature 2: Goal progress bar ─────────────────────────
+              if (hasGoal) ...[
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    Text(
-                      '${h.emoji ?? ''} ${h.name}'.trim(),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: goalProgress ?? 0.0,
+                          minHeight: 5,
+                          backgroundColor:
+                              scheme.surfaceContainerHighest,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(color),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(width: 8),
                     Text(
-                      _streak > 0
-                          ? '🔥 $_streak day streak'
-                          : (h.remindHour != null
-                              ? 'Every day at ${_fmtTime(h.remindHour!, h.remindMinute ?? 0)}'
-                              : 'No reminder'),
+                      _done
+                          ? '${_fmtTarget(h.targetValue!)} / ${_fmtTarget(h.targetValue!)} ${h.targetUnit ?? ''}'.trim()
+                          : '0 / ${_fmtTarget(h.targetValue!)} ${h.targetUnit ?? ''}'.trim(),
                       style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _done ? color : scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
-              ),
-              // 7-day strip
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final d in _week)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: d ? color : Colors.transparent,
-                        border: Border.all(
-                          color: d ? color : scheme.outlineVariant,
-                          width: 1.2,
-                        ),
-                      ),
+                if (_streak > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '🔥 $_streak day streak',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurfaceVariant,
                     ),
+                  ),
                 ],
-              ),
+              ],
             ],
           ),
         ),
@@ -251,7 +522,12 @@ class _HabitCardState extends State<_HabitCard> {
     final ap = t.period == DayPeriod.am ? 'AM' : 'PM';
     return '$hr:$mn $ap';
   }
+
+  String _fmtTarget(double v) =>
+      v % 1 == 0 ? v.toInt().toString() : v.toString();
 }
+
+// ── Habit Detail Sheet ────────────────────────────────────────────────────────
 
 class _HabitDetailSheet extends StatelessWidget {
   const _HabitDetailSheet({required this.habit});
@@ -268,6 +544,16 @@ class _HabitDetailSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Drag handle.
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             Text(
               '${habit.emoji ?? '✅'} ${habit.name}',
               style: const TextStyle(
@@ -287,9 +573,36 @@ class _HabitDetailSheet extends StatelessWidget {
                 ),
               ),
             ),
+            if (habit.targetValue != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Goal: ${habit.targetValue! % 1 == 0 ? habit.targetValue!.toInt() : habit.targetValue!} ${habit.targetUnit ?? ''}'.trim(),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
+            // Action buttons.
             Row(
               children: [
+                // Stats button — Feature 1.
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HabitStatsScreen(habit: habit),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.bar_chart_rounded),
+                    label: const Text('Stats'),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
@@ -305,7 +618,7 @@ class _HabitDetailSheet extends StatelessWidget {
                     label: const Text('Edit'),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.tonal(
                     onPressed: () async {

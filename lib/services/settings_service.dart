@@ -83,4 +83,19 @@ class SettingsService {
     final prefs = await _ensure();
     await prefs.setInt(AppConstants.prefInboxDeleteAfterMinutes, minutes);
   }
+
+  /// Returns the last time an update check was performed, or null if never.
+  Future<DateTime?> getLastUpdateCheck() async {
+    final prefs = await _ensure();
+    final raw = prefs.getString(AppConstants.prefLastUpdateCheck);
+    if (raw == null) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  /// Persists the timestamp of the most recent update check.
+  Future<void> setLastUpdateCheck(DateTime time) async {
+    final prefs = await _ensure();
+    await prefs.setString(
+        AppConstants.prefLastUpdateCheck, time.toIso8601String());
+  }
 }

@@ -24,6 +24,11 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
   int _endHour = 22;
   bool _saving = false;
 
+  // Feature 2: Numeric goal
+  bool _hasGoal = false;
+  final _targetCtrl = TextEditingController();
+  String _targetUnit = '';
+
   static const _palette = <Color>[
     Color(0xFF14B8A6),
     Color(0xFF22C55E),
@@ -52,12 +57,20 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
       if (h.remindHour != null) {
         _time = TimeOfDay(hour: h.remindHour!, minute: h.remindMinute ?? 0);
       }
+      if (h.targetValue != null) {
+        _hasGoal = true;
+        _targetCtrl.text = h.targetValue! % 1 == 0
+            ? h.targetValue!.toInt().toString()
+            : h.targetValue!.toString();
+        _targetUnit = h.targetUnit ?? '';
+      }
     }
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _targetCtrl.dispose();
     super.dispose();
   }
 
@@ -74,7 +87,12 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
           ..remindHour = _remind ? _time.hour : null
           ..remindMinute = _remind ? _time.minute : null
           ..intervalMinutes = (_remind && _useInterval) ? _intervalMinutes : 0
-          ..intervalEndHour = _endHour;
+          ..intervalEndHour = _endHour
+          ..targetValue = _hasGoal
+              ? double.tryParse(_targetCtrl.text.trim())
+              : null
+          ..targetUnit =
+              _hasGoal && _targetUnit.trim().isNotEmpty ? _targetUnit.trim() : null;
         await HabitRepository.instance.update(h);
       } else {
         final h = await HabitRepository.instance.create(
@@ -83,11 +101,15 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
           color: _color,
           remindAt: _remind ? _time : null,
         );
-        // If interval mode, update the habit with interval fields and
-        // reschedule.
-        if (_remind && _useInterval) {
-          h.intervalMinutes = _intervalMinutes;
-          h.intervalEndHour = _endHour;
+        // Apply interval + goal fields and reschedule.
+        h.intervalMinutes = (_remind && _useInterval) ? _intervalMinutes : 0;
+        h.intervalEndHour = _endHour;
+        h.targetValue = _hasGoal
+            ? double.tryParse(_targetCtrl.text.trim())
+            : null;
+        h.targetUnit =
+            _hasGoal && _targetUnit.trim().isNotEmpty ? _targetUnit.trim() : null;
+        if (_hasGoal || (_remind && _useInterval)) {
           await HabitRepository.instance.update(h);
         }
       }
@@ -141,7 +163,7 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _emojis.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final e = _emojis[i];
                   final active = _emoji == e;
@@ -205,6 +227,66 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+            // ── Numeric goal ──────────────────────────────────────────────
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Daily goal'),
+              subtitle: Text(
+                _hasGoal ? 'Track a numeric target each day' : 'e.g. 8 glasses, 30 minutes',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              value: _hasGoal,
+              onChanged: (v) => setState(() => _hasGoal = v),
+            ),
+            if (_hasGoal) ...[
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _targetCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(hintText: 'Target (e.g. 8)'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      onChanged: (v) => setState(() => _targetUnit = v),
+                      controller: TextEditingController.fromValue(
+                        TextEditingValue(
+                          text: _targetUnit,
+                          selection: TextSelection.collapsed(offset: _targetUnit.length),
+                        ),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(hintText: 'Unit (e.g. glasses)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Quick unit presets.
+              Wrap(
+                spacing: 6,
+                children: ['glasses', 'minutes', 'pages', 'km', 'reps']
+                    .map(
+                      (u) => ChoiceChip(
+                        label: Text(u),
+                        selected: _targetUnit == u,
+                        onSelected: (_) => setState(() => _targetUnit = u),
+                        selectedColor:
+                            Theme.of(context).colorScheme.primaryContainer,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
             const SizedBox(height: 12),
             // Reminder toggle
             SwitchListTile(

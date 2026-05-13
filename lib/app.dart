@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
@@ -15,6 +17,7 @@ import 'services/reminder_repository.dart';
 import 'services/settings_service.dart';
 import 'services/share_intent_service.dart';
 import 'services/habit_repository.dart';
+import 'services/update_service.dart';
 
 /// App-level messenger key so bottom sheets / screens that dismiss themselves
 /// before showing a snackbar can still reach a live Messenger (the root one)
@@ -81,6 +84,40 @@ class _MnemoAppState extends ConsumerState<MnemoApp> {
         _showOnboarding = !done;
         _bootstrapDone = true;
       });
+    }
+
+    // Auto update check — runs on every launch after the UI is ready.
+    // We delay slightly so the first frame is painted before the network call.
+    if (done) {
+      Future.delayed(const Duration(seconds: 2), _autoCheckForUpdate);
+    }
+  }
+
+  /// Checks for a new release on every app launch.
+  /// Shows the full update sheet when a newer version is available.
+  /// Network errors are silently swallowed — this is best-effort.
+  Future<void> _autoCheckForUpdate() async {
+    try {
+      final info = await UpdateService.instance.fetchLatest();
+      await SettingsService.instance.setLastUpdateCheck(DateTime.now());
+
+      if (!info.isNewer || !mounted) return;
+
+      // Use the router's navigator context so the sheet has a proper
+      // Navigator ancestor even if the user has already navigated.
+      final navContext =
+          _router.routerDelegate.navigatorKey.currentContext;
+      if (navContext == null || !navContext.mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: navContext,
+        isScrollControlled: true,
+        useSafeArea: true,
+        isDismissible: true,
+        builder: (_) => _AutoUpdateSheet(info: info),
+      );
+    } catch (_) {
+      // Network / parse errors are silently ignored.
     }
   }
 
@@ -246,6 +283,160 @@ class _SplashScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Auto-update sheet shown on launch when a newer version is available ───────
+
+class _AutoUpdateSheet extends StatelessWidget {
+  const _AutoUpdateSheet({required this.info});
+  final ReleaseInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dateStr = DateFormat('MMM d, y').format(info.publishedAt);
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.72,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle.
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 16),
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.system_update_rounded,
+                        color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'v${info.version} available',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Released $dateStr · you have v${AppConstants.appVersion}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Release notes.
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  Text(
+                    "What's new",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      info.body.isEmpty
+                          ? 'No release notes provided.'
+                          : info.body,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+            // Action buttons.
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, 8, 20, MediaQuery.paddingOf(context).bottom + 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Later'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final url = info.apkUrl.isNotEmpty
+                            ? info.apkUrl
+                            : info.htmlUrl;
+                        if (url.isEmpty) return;
+                        try {
+                          await launchUrl(
+                            Uri.parse(url),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (_) {}
+                      },
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('Download update'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

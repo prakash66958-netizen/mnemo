@@ -11,7 +11,7 @@ class AppConstants {
   static const String appTagline = 'Your private second brain';
 
   /// Current app version — must match pubspec.yaml.
-  static const String appVersion = '2.2.0';
+  static const String appVersion = '2.3.0';
 
   /// GitHub repo used for release checks.
   static const String githubRepo = 'prakash66958-netizen/mnemo';
@@ -42,4 +42,7 @@ class AppConstants {
   /// Supersedes [prefInboxDeleteAfterHours] when present.
   /// 0 = Never.
   static const String prefInboxDeleteAfterMinutes = 'pref_inbox_delete_after_minutes';
+
+  /// ISO-8601 timestamp of the last successful update check.
+  static const String prefLastUpdateCheck = 'pref_last_update_check';
 }
