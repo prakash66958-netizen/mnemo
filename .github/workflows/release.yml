@@ -46,7 +46,11 @@ jobs:
       # ── 5. Decode release keystore from secret ────────────────────────────
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.jks
+          # Strip any whitespace/newlines that may have been introduced when
+          # the secret was pasted into GitHub.
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r ' | base64 --decode > android/app/release.jks
+          # Verify the keystore is a valid file (>1KB).
+          ls -la android/app/release.jks
 
       # ── 6. Write key.properties for Gradle signing ────────────────────────
       - name: Write key.properties
