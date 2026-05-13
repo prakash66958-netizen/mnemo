@@ -4,6 +4,7 @@ import '../core/category.dart';
 import '../models/memory_item.dart';
 import '../models/reminder.dart';
 import 'database_service.dart';
+import 'google_drive_service.dart';
 import 'memory_repository.dart';
 import 'notification_service.dart';
 
@@ -55,6 +56,7 @@ class ReminderRepository {
       body: text,
       when: remindAt,
     );
+    GoogleDriveService.instance.scheduleSync();
     return reminder;
   }
 
@@ -72,6 +74,7 @@ class ReminderRepository {
         when: reminder.remindAt,
       );
     }
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> complete(Reminder reminder) async {
@@ -80,6 +83,7 @@ class ReminderRepository {
     await _isar.writeTxn(() async {
       await _isar.reminders.put(reminder);
     });
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> delete(Reminder reminder) async {
@@ -93,6 +97,7 @@ class ReminderRepository {
         await _isar.memoryItems.delete(memoryId);
       }
     });
+    GoogleDriveService.instance.scheduleSync();
   }
 
   /// Upcoming (not completed, future) + overdue (not completed, past).

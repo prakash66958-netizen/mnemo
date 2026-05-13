@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:google_sign_in/google_sign_in.dart';
@@ -136,6 +137,29 @@ class GoogleDriveService {
     } catch (e) {
       return SyncResult(uploaded: false, mergedItems: 0, error: e.toString());
     }
+  }
+
+  // ── Debounced auto-sync ────────────────────────────────────────────────────
+
+  Timer? _debounceTimer;
+
+  /// Call this after every local write (create, update, delete).
+  /// Waits [delay] (default 3 s) for further writes to settle, then runs
+  /// a full sync. Rapid consecutive writes are coalesced into one upload.
+  /// Does nothing when the user is not signed in.
+  void scheduleSync({Duration delay = const Duration(seconds: 3)}) {
+    if (!isSignedIn) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(delay, () async {
+      try {
+        final result = await syncNow();
+        if (result.success) {
+          await SettingsService.instance.setLastDriveSync(DateTime.now());
+        }
+      } catch (_) {
+        // Silent — auto-sync failures must never surface to the user.
+      }
+    });
   }
 
   /// Downloads the Drive backup and imports it, without uploading.

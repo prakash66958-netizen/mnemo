@@ -4,6 +4,7 @@ import 'package:isar/isar.dart';
 import '../models/habit.dart';
 import '../models/habit_completion.dart';
 import 'database_service.dart';
+import 'google_drive_service.dart';
 import 'notification_service.dart';
 
 /// Repository for creating, updating, and querying habits and their daily
@@ -56,6 +57,7 @@ class HabitRepository {
         );
       }
     }
+    GoogleDriveService.instance.scheduleSync();
     return habit;
   }
 
@@ -88,6 +90,7 @@ class HabitRepository {
         );
       }
     }
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> delete(Habit habit) async {
@@ -103,6 +106,7 @@ class HabitRepository {
           .deleteAll();
       await _isar.habits.delete(habit.id);
     });
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> archive(Habit habit) async {
@@ -122,6 +126,7 @@ class HabitRepository {
         minute: habit.remindMinute ?? 0,
       );
     }
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> toggleToday(Habit habit) async {
@@ -144,6 +149,7 @@ class HabitRepository {
         await _isar.habitCompletions.put(c);
       }
     });
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<bool> isCompletedToday(int habitId) async {

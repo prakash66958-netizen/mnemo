@@ -12,6 +12,7 @@ import '../models/memory_item.dart';
 import '../models/reminder.dart';
 import 'classifier_service.dart';
 import 'database_service.dart';
+import 'google_drive_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
 import 'promise_detector.dart';
@@ -71,6 +72,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
+    GoogleDriveService.instance.scheduleSync();
     return item;
   }
 
@@ -136,6 +138,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
+    GoogleDriveService.instance.scheduleSync();
     return item;
   }
 
@@ -153,6 +156,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> togglePinned(MemoryItem item) async {
@@ -189,6 +193,7 @@ class MemoryRepository {
         try { await f.delete(); } catch (_) {}
       }
     }
+    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> markReminderPromptHandled(MemoryItem item) async {
@@ -447,27 +452,27 @@ class MemoryRepository {
     final memoryIdMap = <int, int>{};
     final habitIdMap = <int, int>{};
 
-    List<dynamic> _cap(List<dynamic>? list) {
+    List<dynamic> cap(List<dynamic>? list) {
       if (list == null) return const [];
       return list.length > maxItems ? list.sublist(0, maxItems) : list;
     }
 
     // 1) Memories
-    final memList = _cap(decoded['memories'] as List?);
+    final memList = cap(decoded['memories'] as List?);
     total += await _importMemories(memList, idMap: memoryIdMap);
 
     // 2) Reminders
-    final remList = _cap(decoded['reminders'] as List?);
+    final remList = cap(decoded['reminders'] as List?);
     await _importReminders(remList, memoryIdMap);
     total += remList.length;
 
     // 3) Habits
-    final habitList = _cap(decoded['habits'] as List?);
+    final habitList = cap(decoded['habits'] as List?);
     await _importHabits(habitList, habitIdMap);
     total += habitList.length;
 
     // 4) Habit completions
-    final compList = _cap(decoded['habitCompletions'] as List?);
+    final compList = cap(decoded['habitCompletions'] as List?);
     await _importCompletions(compList, habitIdMap);
 
     return total;
