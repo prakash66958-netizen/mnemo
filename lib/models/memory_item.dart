@@ -69,4 +69,23 @@ class MemoryItem {
 
   /// Optional color override if the user wants a non-default card tint.
   int? colorValue;
+
+  /// When true, this item uses checklist/bullet mode (list of items).
+  bool checklistMode = false;
+
+  /// JSON-encoded list of checklist items: [{"text":"...", "checked":false}, ...]
+  /// Only used when checklistMode is true.
+  String checklistData = '';
+
+  /// Optional location name (e.g. "Cinepolis, Mumbai").
+  String? locationName;
+
+  /// Optional Google Maps URL for the location.
+  String? locationUrl;
+
+  /// When true, this inbox item has been marked as done by the user.
+  bool doneInInbox = false;
+
+  /// When this item was marked done (used for auto-delete scheduling).
+  DateTime? doneAt;
 }

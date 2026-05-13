@@ -52,6 +52,17 @@ class InboxTab extends ConsumerWidget {
                   final reminders =
                       remindersAsync.asData?.value ?? const <Reminder>[];
 
+                  // Auto-delete items that have been done long enough
+                  final deleteAfterMinutes = ref.read(inboxDeleteAfterHoursProvider);
+                  if (deleteAfterMinutes > 0) {
+                    final cutoff = DateTime.now().subtract(Duration(minutes: deleteAfterMinutes));
+                    for (final item in items) {
+                      if (item.doneInInbox && item.doneAt != null && item.doneAt!.isBefore(cutoff)) {
+                        MemoryRepository.instance.delete(item);
+                      }
+                    }
+                  }
+
                   return _InboxBody(
                     items: items,
                     archived: archived,
@@ -278,6 +289,22 @@ class _InboxBody extends StatelessWidget {
     // (no amber gradient), since the whole tab is already "pinned".
     final all = [...pinnedSection, ...rest];
 
+    // Sort so that within each day group, unchecked items float to the top
+    // and checked (done) items sink to the bottom. Between groups the
+    // existing newest-first order is preserved.
+    all.sort((a, b) {
+      final keyA = _dayKey(a.createdAt);
+      final keyB = _dayKey(b.createdAt);
+      // Different day groups — keep original newest-first order.
+      if (keyA != keyB) return keyB.compareTo(keyA);
+      // Same day group — done items go after undone items.
+      final doneA = a.doneInInbox ? 1 : 0;
+      final doneB = b.doneInInbox ? 1 : 0;
+      if (doneA != doneB) return doneA.compareTo(doneB);
+      // Within the same done-state, keep newest first.
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
     String? lastKey;
     for (final m in all) {
       final key = _dayKey(m.createdAt);
@@ -318,34 +345,129 @@ class _InboxBody extends StatelessWidget {
   }
 }
 
-class _SwipeableCard extends StatelessWidget {
+class _SwipeableCard extends ConsumerStatefulWidget {
   const _SwipeableCard({required this.item, this.reminder});
   final MemoryItem item;
   final Reminder? reminder;
 
   @override
+  ConsumerState<_SwipeableCard> createState() => _SwipeableCardState();
+}
+
+class _SwipeableCardState extends ConsumerState<_SwipeableCard> {
+  @override
   Widget build(BuildContext context) {
+    final deleteAfterMinutes = ref.watch(inboxDeleteAfterHoursProvider);
+    final checkboxEnabled = ref.watch(inboxCheckboxEnabledProvider);
     final trailing = <Widget>[];
-    if (reminder != null) {
-      trailing.add(MnemoChip.bell(label: _reminderLabel(reminder!.remindAt)));
+    if (widget.reminder != null) {
+      trailing.add(MnemoChip.bell(label: _reminderLabel(widget.reminder!.remindAt)));
     }
-    return MemoryCard(
-      item: item,
-      trailingChips: trailing,
-      onSwipeArchive: () async {
-        await MemoryRepository.instance.toggleArchived(item);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(item.archived ? 'Restored' : 'Archived'),
-              duration: const Duration(seconds: 2),
+
+    // Show a location chip if the item has a location
+    if (widget.item.locationName != null && widget.item.locationName!.isNotEmpty) {
+      trailing.add(MnemoChip(label: '📍 ${widget.item.locationName!}'));
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Checkbox — only shown when enabled in settings
+        if (checkboxEnabled) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 14, right: 4),
+            child: GestureDetector(
+              onTap: () => _toggleDone(deleteAfterMinutes),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.item.doneInInbox
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: widget.item.doneInInbox
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
+                    width: 2,
+                  ),
+                ),
+                child: widget.item.doneInInbox
+                    ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                    : null,
+              ),
             ),
-          );
-        }
-      },
-      onSwipePin: () => MemoryRepository.instance.togglePinned(item),
-      onLongPress: () => showMemoryActionsSheet(context, item),
+          ),
+          const SizedBox(width: 4),
+        ],
+        Expanded(
+          child: Opacity(
+            opacity: (checkboxEnabled && widget.item.doneInInbox) ? 0.5 : 1.0,
+            child: MemoryCard(
+              item: widget.item,
+              trailingChips: trailing,
+              onSwipeArchive: () async {
+                await MemoryRepository.instance.toggleArchived(widget.item);
+                showAppToast(widget.item.archived ? 'Restored' : 'Archived');
+              },
+              onSwipePin: () => MemoryRepository.instance.togglePinned(widget.item),
+              onLongPress: () => showMemoryActionsSheet(context, widget.item),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  Future<void> _toggleDone(int deleteAfterMinutes) async {
+    final item = widget.item;
+    item.doneInInbox = !item.doneInInbox;
+    item.doneAt = item.doneInInbox ? DateTime.now() : null;
+    await MemoryRepository.instance.update(item);
+
+    if (item.doneInInbox && deleteAfterMinutes > 0) {
+      // Schedule auto-delete
+      Future.delayed(Duration(minutes: deleteAfterMinutes), () async {
+        final fresh = await MemoryRepository.instance.getById(item.id);
+        if (fresh != null && fresh.doneInInbox) {
+          await MemoryRepository.instance.delete(fresh);
+        }
+      });
+
+      final label = _durationLabel(deleteAfterMinutes);
+
+      // Use the centered overlay toast (never gets stuck above the nav bar)
+      showAppToast(
+        'Done · deletes in $label',
+        actionLabel: 'Undo',
+        onAction: () async {
+          item.doneInInbox = false;
+          item.doneAt = null;
+          await MemoryRepository.instance.update(item);
+        },
+      );
+    } else if (item.doneInInbox) {
+      // deleteAfterMinutes == 0 (Never) — just confirm it's marked done
+      showAppToast(
+        'Marked done',
+        actionLabel: 'Undo',
+        onAction: () async {
+          item.doneInInbox = false;
+          item.doneAt = null;
+          await MemoryRepository.instance.update(item);
+        },
+      );
+    }
+  }
+
+  static String _durationLabel(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    if (hours < 24) return hours == 1 ? '1 hour' : '$hours hours';
+    final days = hours ~/ 24;
+    return days == 1 ? '1 day' : '$days days';
   }
 
   String _reminderLabel(DateTime dt) {

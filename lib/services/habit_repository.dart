@@ -92,6 +92,10 @@ class HabitRepository {
 
   Future<void> delete(Habit habit) async {
     await NotificationService.instance.cancel(habit.notificationId);
+    // Also cancel all interval slots (notificationId + 0 through + 23).
+    for (var i = 0; i < 24; i++) {
+      await NotificationService.instance.cancel(habit.notificationId + i);
+    }
     await _isar.writeTxn(() async {
       await _isar.habitCompletions
           .filter()

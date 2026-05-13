@@ -101,6 +101,13 @@ class SettingsTab extends ConsumerWidget {
                     ],
                   ),
                   _Group(
+                    title: 'Inbox',
+                    children: [
+                      _CheckboxToggleRow(),
+                      _AutoDeleteRow(),
+                    ],
+                  ),
+                  _Group(
                     title: 'Data',
                     children: [
                       _Row(
@@ -149,7 +156,7 @@ class SettingsTab extends ConsumerWidget {
                         iconColor: const Color(0xFF64748B),
                         title: AppConstants.appName,
                         subtitle:
-                            '${AppConstants.appTagline} · Version 1.0.0',
+                            '${AppConstants.appTagline} · Version 2.0.0',
                         onTap: null,
                       ),
                     ],
@@ -454,6 +461,270 @@ class _Row extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CheckboxToggleRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(inboxCheckboxEnabledProvider);
+    return _Row(
+      icon: Icons.check_circle_outline_rounded,
+      iconColor: const Color(0xFF10B981),
+      title: 'Show checkboxes in inbox',
+      subtitle: enabled
+          ? 'Tap a checkbox to mark an item done'
+          : 'Checkboxes are hidden',
+      trailing: Switch(
+        value: enabled,
+        onChanged: (v) =>
+            ref.read(inboxCheckboxEnabledProvider.notifier).set(v),
+      ),
+    );
+  }
+}
+
+class _AutoDeleteRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final minutes = ref.watch(inboxDeleteAfterHoursProvider);
+
+    return _Row(
+      icon: Icons.auto_delete_rounded,
+      iconColor: const Color(0xFFF59E0B),
+      title: 'Auto-delete checked items',
+      subtitle: 'Delete after: ${_labelFor(minutes)}',
+      onTap: () => _showPicker(context, ref, minutes),
+    );
+  }
+
+  static String _labelFor(int m) {
+    if (m == 0) return 'Never';
+    if (m < 60) return '$m min';
+    final h = m ~/ 60;
+    if (h < 24) return h == 1 ? '1 hour' : '$h hours';
+    final d = h ~/ 24;
+    return d == 1 ? '1 day' : '$d days';
+  }
+
+  Future<void> _showPicker(
+      BuildContext context, WidgetRef ref, int current) async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (_) => _AutoDeleteDialog(current: current),
+    );
+    if (result != null) {
+      ref.read(inboxDeleteAfterHoursProvider.notifier).set(result);
+    }
+  }
+}
+
+class _AutoDeleteDialog extends StatefulWidget {
+  const _AutoDeleteDialog({required this.current});
+  final int current; // stored in minutes
+
+  @override
+  State<_AutoDeleteDialog> createState() => _AutoDeleteDialogState();
+}
+
+class _AutoDeleteDialogState extends State<_AutoDeleteDialog> {
+  // Presets in minutes: 0=Never, 30min, 1h, 6h, 12h, 1d, 2d, 3d, 1w
+  static const _presets = [0, 30, 60, 360, 720, 1440, 2880, 4320, 10080];
+
+  late int _selected;
+  bool _isCustom = false;
+
+  final _numCtrl = TextEditingController();
+  String _unit = 'hours'; // 'minutes', 'hours', 'days'
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.current;
+    if (!_presets.contains(widget.current)) {
+      _isCustom = true;
+      _initCustomFromMinutes(widget.current);
+    }
+  }
+
+  void _initCustomFromMinutes(int m) {
+    if (m <= 0) {
+      _numCtrl.text = '';
+      _unit = 'hours';
+    } else if (m % (60 * 24) == 0) {
+      _numCtrl.text = '${m ~/ (60 * 24)}';
+      _unit = 'days';
+    } else if (m % 60 == 0) {
+      _numCtrl.text = '${m ~/ 60}';
+      _unit = 'hours';
+    } else {
+      _numCtrl.text = '$m';
+      _unit = 'minutes';
+    }
+  }
+
+  @override
+  void dispose() {
+    _numCtrl.dispose();
+    super.dispose();
+  }
+
+  String _label(int m) {
+    if (m == 0) return 'Never';
+    if (m < 60) return '$m min';
+    final h = m ~/ 60;
+    if (h < 24) return h == 1 ? '1 hour' : '$h hours';
+    final d = h ~/ 24;
+    return d == 1 ? '1 day' : '$d days';
+  }
+
+  int? _customToMinutes() {
+    final n = int.tryParse(_numCtrl.text.trim());
+    if (n == null || n <= 0) return null;
+    switch (_unit) {
+      case 'minutes':
+        return n;
+      case 'hours':
+        return n * 60;
+      case 'days':
+        return n * 60 * 24;
+    }
+    return n;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      title: const Text('Auto-delete after'),
+      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final m in _presets)
+                  ChoiceChip(
+                    label: Text(_label(m)),
+                    selected: !_isCustom && _selected == m,
+                    onSelected: (_) => setState(() {
+                      _selected = m;
+                      _isCustom = false;
+                    }),
+                  ),
+                ChoiceChip(
+                  label: const Text('Custom…'),
+                  selected: _isCustom,
+                  onSelected: (_) => setState(() {
+                    _isCustom = true;
+                    if (_numCtrl.text.isEmpty) {
+                      _numCtrl.text = '2';
+                      _unit = 'hours';
+                    }
+                  }),
+                ),
+              ],
+            ),
+            if (_isCustom) ...[
+              const SizedBox(height: 16),
+              Text(
+                'CUSTOM DURATION',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: TextField(
+                      controller: _numCtrl,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ToggleButtons(
+                      isSelected: [
+                        _unit == 'minutes',
+                        _unit == 'hours',
+                        _unit == 'days',
+                      ],
+                      onPressed: (i) => setState(() {
+                        _unit = ['minutes', 'hours', 'days'][i];
+                      }),
+                      borderRadius: BorderRadius.circular(10),
+                      constraints: const BoxConstraints(
+                        minHeight: 38,
+                        minWidth: 52,
+                      ),
+                      children: const [
+                        Text('min',  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('hrs',  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text('days', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Builder(builder: (ctx) {
+                if (_numCtrl.text.trim().isEmpty) return const SizedBox.shrink();
+                final m = _customToMinutes();
+                if (m == null) {
+                  return Text('Enter a valid number',
+                      style: TextStyle(fontSize: 12, color: scheme.error));
+                }
+                return Text('Items will delete after ${_label(m)}',
+                    style: TextStyle(
+                        fontSize: 12, color: scheme.onSurfaceVariant));
+              }),
+            ],
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            int value;
+            if (_isCustom) {
+              final m = _customToMinutes();
+              if (m == null) return;
+              value = m;
+            } else {
+              value = _selected;
+            }
+            Navigator.pop(context, value);
+          },
+          child: const Text('Set'),
+        ),
+      ],
     );
   }
 }

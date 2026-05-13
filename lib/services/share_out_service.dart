@@ -16,9 +16,17 @@ class ShareOutService {
     final imagePath = m.imagePath;
     final hasImage = imagePath != null && await File(imagePath).exists();
 
-    final body = (m.title != null && m.title!.trim().isNotEmpty)
-        ? '${m.title}\n\n${m.content}'
-        : m.content;
+    // Build the body with bold title (WhatsApp/Telegram *bold* syntax)
+    final titlePart = (m.title != null && m.title!.trim().isNotEmpty)
+        ? '*${m.title!.trim()}*\n\n'
+        : '';
+    final locationPart = (m.locationName != null &&
+            m.locationName!.trim().isNotEmpty)
+        ? '\n\n📍 ${m.locationName!.trim()}'
+            '${m.locationUrl != null ? '\n${m.locationUrl}' : ''}'
+        : '';
+
+    final body = '$titlePart${m.content}$locationPart';
     final subject = (m.title?.trim().isNotEmpty ?? false)
         ? m.title!
         : (m.content.length > 60 ? m.content.substring(0, 60) : m.content);

@@ -27,68 +27,98 @@ const MemoryItemSchema = CollectionSchema(
       name: r'categoryId',
       type: IsarType.string,
     ),
-    r'colorValue': PropertySchema(
+    r'checklistData': PropertySchema(
       id: 2,
+      name: r'checklistData',
+      type: IsarType.string,
+    ),
+    r'checklistMode': PropertySchema(
+      id: 3,
+      name: r'checklistMode',
+      type: IsarType.bool,
+    ),
+    r'colorValue': PropertySchema(
+      id: 4,
       name: r'colorValue',
       type: IsarType.long,
     ),
     r'content': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'content',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
+    r'doneAt': PropertySchema(
+      id: 7,
+      name: r'doneAt',
+      type: IsarType.dateTime,
+    ),
+    r'doneInInbox': PropertySchema(
+      id: 8,
+      name: r'doneInInbox',
+      type: IsarType.bool,
+    ),
     r'hasPromise': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'hasPromise',
       type: IsarType.bool,
     ),
     r'imagePath': PropertySchema(
-      id: 6,
+      id: 10,
       name: r'imagePath',
       type: IsarType.string,
     ),
+    r'locationName': PropertySchema(
+      id: 11,
+      name: r'locationName',
+      type: IsarType.string,
+    ),
+    r'locationUrl': PropertySchema(
+      id: 12,
+      name: r'locationUrl',
+      type: IsarType.string,
+    ),
     r'pinned': PropertySchema(
-      id: 7,
+      id: 13,
       name: r'pinned',
       type: IsarType.bool,
     ),
     r'rawUrl': PropertySchema(
-      id: 8,
+      id: 14,
       name: r'rawUrl',
       type: IsarType.string,
     ),
     r'reminderPromptHandled': PropertySchema(
-      id: 9,
+      id: 15,
       name: r'reminderPromptHandled',
       type: IsarType.bool,
     ),
     r'searchTokens': PropertySchema(
-      id: 10,
+      id: 16,
       name: r'searchTokens',
       type: IsarType.stringList,
     ),
     r'sourceType': PropertySchema(
-      id: 11,
+      id: 17,
       name: r'sourceType',
       type: IsarType.string,
     ),
     r'tags': PropertySchema(
-      id: 12,
+      id: 18,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'title': PropertySchema(
-      id: 13,
+      id: 19,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 14,
+      id: 20,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -219,9 +249,22 @@ int _memoryItemEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.categoryId.length * 3;
+  bytesCount += 3 + object.checklistData.length * 3;
   bytesCount += 3 + object.content.length * 3;
   {
     final value = object.imagePath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.locationName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.locationUrl;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -264,19 +307,25 @@ void _memoryItemSerialize(
 ) {
   writer.writeBool(offsets[0], object.archived);
   writer.writeString(offsets[1], object.categoryId);
-  writer.writeLong(offsets[2], object.colorValue);
-  writer.writeString(offsets[3], object.content);
-  writer.writeDateTime(offsets[4], object.createdAt);
-  writer.writeBool(offsets[5], object.hasPromise);
-  writer.writeString(offsets[6], object.imagePath);
-  writer.writeBool(offsets[7], object.pinned);
-  writer.writeString(offsets[8], object.rawUrl);
-  writer.writeBool(offsets[9], object.reminderPromptHandled);
-  writer.writeStringList(offsets[10], object.searchTokens);
-  writer.writeString(offsets[11], object.sourceType);
-  writer.writeStringList(offsets[12], object.tags);
-  writer.writeString(offsets[13], object.title);
-  writer.writeDateTime(offsets[14], object.updatedAt);
+  writer.writeString(offsets[2], object.checklistData);
+  writer.writeBool(offsets[3], object.checklistMode);
+  writer.writeLong(offsets[4], object.colorValue);
+  writer.writeString(offsets[5], object.content);
+  writer.writeDateTime(offsets[6], object.createdAt);
+  writer.writeDateTime(offsets[7], object.doneAt);
+  writer.writeBool(offsets[8], object.doneInInbox);
+  writer.writeBool(offsets[9], object.hasPromise);
+  writer.writeString(offsets[10], object.imagePath);
+  writer.writeString(offsets[11], object.locationName);
+  writer.writeString(offsets[12], object.locationUrl);
+  writer.writeBool(offsets[13], object.pinned);
+  writer.writeString(offsets[14], object.rawUrl);
+  writer.writeBool(offsets[15], object.reminderPromptHandled);
+  writer.writeStringList(offsets[16], object.searchTokens);
+  writer.writeString(offsets[17], object.sourceType);
+  writer.writeStringList(offsets[18], object.tags);
+  writer.writeString(offsets[19], object.title);
+  writer.writeDateTime(offsets[20], object.updatedAt);
 }
 
 MemoryItem _memoryItemDeserialize(
@@ -288,20 +337,26 @@ MemoryItem _memoryItemDeserialize(
   final object = MemoryItem();
   object.archived = reader.readBool(offsets[0]);
   object.categoryId = reader.readString(offsets[1]);
-  object.colorValue = reader.readLongOrNull(offsets[2]);
-  object.content = reader.readString(offsets[3]);
-  object.createdAt = reader.readDateTime(offsets[4]);
-  object.hasPromise = reader.readBool(offsets[5]);
+  object.checklistData = reader.readString(offsets[2]);
+  object.checklistMode = reader.readBool(offsets[3]);
+  object.colorValue = reader.readLongOrNull(offsets[4]);
+  object.content = reader.readString(offsets[5]);
+  object.createdAt = reader.readDateTime(offsets[6]);
+  object.doneAt = reader.readDateTimeOrNull(offsets[7]);
+  object.doneInInbox = reader.readBool(offsets[8]);
+  object.hasPromise = reader.readBool(offsets[9]);
   object.id = id;
-  object.imagePath = reader.readStringOrNull(offsets[6]);
-  object.pinned = reader.readBool(offsets[7]);
-  object.rawUrl = reader.readStringOrNull(offsets[8]);
-  object.reminderPromptHandled = reader.readBool(offsets[9]);
-  object.searchTokens = reader.readStringList(offsets[10]) ?? [];
-  object.sourceType = reader.readString(offsets[11]);
-  object.tags = reader.readStringList(offsets[12]) ?? [];
-  object.title = reader.readStringOrNull(offsets[13]);
-  object.updatedAt = reader.readDateTime(offsets[14]);
+  object.imagePath = reader.readStringOrNull(offsets[10]);
+  object.locationName = reader.readStringOrNull(offsets[11]);
+  object.locationUrl = reader.readStringOrNull(offsets[12]);
+  object.pinned = reader.readBool(offsets[13]);
+  object.rawUrl = reader.readStringOrNull(offsets[14]);
+  object.reminderPromptHandled = reader.readBool(offsets[15]);
+  object.searchTokens = reader.readStringList(offsets[16]) ?? [];
+  object.sourceType = reader.readString(offsets[17]);
+  object.tags = reader.readStringList(offsets[18]) ?? [];
+  object.title = reader.readStringOrNull(offsets[19]);
+  object.updatedAt = reader.readDateTime(offsets[20]);
   return object;
 }
 
@@ -317,30 +372,42 @@ P _memoryItemDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readLongOrNull(offset)) as P;
-    case 3:
       return (reader.readString(offset)) as P;
+    case 3:
+      return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 5:
-      return (reader.readBool(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 7:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 8:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 9:
       return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 11:
-      return (reader.readString(offset)) as P;
-    case 12:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 13:
       return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
+    case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readBool(offset)) as P;
     case 14:
+      return (reader.readStringOrNull(offset)) as P;
+    case 15:
+      return (reader.readBool(offset)) as P;
+    case 16:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 19:
+      return (reader.readStringOrNull(offset)) as P;
+    case 20:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1269,6 +1336,152 @@ extension MemoryItemQueryFilter
   }
 
   QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'checklistData',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'checklistData',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'checklistData',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'checklistData',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistDataIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'checklistData',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      checklistModeEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'checklistMode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
       colorValueIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1527,6 +1740,86 @@ extension MemoryItemQueryFilter
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> doneAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'doneAt',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      doneAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'doneAt',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> doneAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'doneAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> doneAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'doneAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> doneAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'doneAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> doneAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'doneAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      doneInInboxEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'doneInInbox',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> hasPromiseEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -1737,6 +2030,314 @@ extension MemoryItemQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'imagePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'locationName',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'locationName',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'locationName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'locationName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'locationName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'locationName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'locationName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'locationUrl',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'locationUrl',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'locationUrl',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'locationUrl',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'locationUrl',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'locationUrl',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      locationUrlIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'locationUrl',
         value: '',
       ));
     });
@@ -2726,6 +3327,30 @@ extension MemoryItemQuerySortBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByChecklistData() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistData', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByChecklistDataDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistData', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByChecklistMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistMode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByChecklistModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistMode', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'colorValue', Sort.asc);
@@ -2762,6 +3387,30 @@ extension MemoryItemQuerySortBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDoneAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDoneAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDoneInInbox() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneInInbox', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDoneInInboxDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneInInbox', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByHasPromise() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasPromise', Sort.asc);
@@ -2783,6 +3432,30 @@ extension MemoryItemQuerySortBy
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByImagePathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'imagePath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByLocationName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByLocationNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByLocationUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationUrl', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByLocationUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationUrl', Sort.desc);
     });
   }
 
@@ -2887,6 +3560,30 @@ extension MemoryItemQuerySortThenBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByChecklistData() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistData', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByChecklistDataDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistData', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByChecklistMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistMode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByChecklistModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistMode', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'colorValue', Sort.asc);
@@ -2923,6 +3620,30 @@ extension MemoryItemQuerySortThenBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDoneAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDoneAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDoneInInbox() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneInInbox', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDoneInInboxDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'doneInInbox', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByHasPromise() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasPromise', Sort.asc);
@@ -2956,6 +3677,30 @@ extension MemoryItemQuerySortThenBy
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByImagePathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'imagePath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByLocationName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByLocationNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByLocationUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationUrl', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByLocationUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'locationUrl', Sort.desc);
     });
   }
 
@@ -3049,6 +3794,20 @@ extension MemoryItemQueryWhereDistinct
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByChecklistData(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'checklistData',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByChecklistMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'checklistMode');
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'colorValue');
@@ -3068,6 +3827,18 @@ extension MemoryItemQueryWhereDistinct
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByDoneAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'doneAt');
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByDoneInInbox() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'doneInInbox');
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByHasPromise() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'hasPromise');
@@ -3078,6 +3849,20 @@ extension MemoryItemQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'imagePath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByLocationName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'locationName', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByLocationUrl(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'locationUrl', caseSensitive: caseSensitive);
     });
   }
 
@@ -3154,6 +3939,18 @@ extension MemoryItemQueryProperty
     });
   }
 
+  QueryBuilder<MemoryItem, String, QQueryOperations> checklistDataProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'checklistData');
+    });
+  }
+
+  QueryBuilder<MemoryItem, bool, QQueryOperations> checklistModeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'checklistMode');
+    });
+  }
+
   QueryBuilder<MemoryItem, int?, QQueryOperations> colorValueProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'colorValue');
@@ -3172,6 +3969,18 @@ extension MemoryItemQueryProperty
     });
   }
 
+  QueryBuilder<MemoryItem, DateTime?, QQueryOperations> doneAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'doneAt');
+    });
+  }
+
+  QueryBuilder<MemoryItem, bool, QQueryOperations> doneInInboxProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'doneInInbox');
+    });
+  }
+
   QueryBuilder<MemoryItem, bool, QQueryOperations> hasPromiseProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'hasPromise');
@@ -3181,6 +3990,18 @@ extension MemoryItemQueryProperty
   QueryBuilder<MemoryItem, String?, QQueryOperations> imagePathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'imagePath');
+    });
+  }
+
+  QueryBuilder<MemoryItem, String?, QQueryOperations> locationNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'locationName');
+    });
+  }
+
+  QueryBuilder<MemoryItem, String?, QQueryOperations> locationUrlProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'locationUrl');
     });
   }
 

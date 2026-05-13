@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -233,6 +234,23 @@ class MemoryCard extends StatelessWidget {
     for (final tag in item.tags) {
       if (tag == category.id) continue;
       chips.add(MnemoChip(label: '#$tag'));
+    }
+
+    // Location chip
+    if (item.locationName != null && item.locationName!.isNotEmpty) {
+      chips.add(MnemoChip(label: '📍 ${item.locationName!}'));
+    }
+
+    // Checklist progress chip
+    if (item.checklistMode && item.checklistData.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(item.checklistData) as List;
+        final total = decoded.length;
+        final done = decoded
+            .where((e) => (e as Map)['checked'] == true)
+            .length;
+        chips.add(MnemoChip(label: '✓ $done/$total'));
+      } catch (_) {}
     }
 
     chips.addAll(trailingChips);

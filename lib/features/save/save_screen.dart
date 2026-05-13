@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +11,7 @@ import '../../services/category_service.dart';
 import '../../services/classifier_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/promise_detector.dart';
+import '../../widgets/location_picker.dart';
 import '../shared/providers.dart';
 
 /// Full-screen note editor used when the user shares text into the app or
@@ -47,6 +50,11 @@ class _SaveScreenState extends State<SaveScreen> {
   bool _saving = false;
   bool _pinnedByCaller = false;
   bool _isEditing = false;
+  bool _checklistMode = false;
+  List<Map<String, dynamic>> _checklistItems = [];
+  final List<TextEditingController> _checklistControllers = [];
+  String? _locationName;
+  String? _locationUrl;
   MemoryItem? _editingItem;
 
   @override
@@ -98,6 +106,20 @@ class _SaveScreenState extends State<SaveScreen> {
     _contentCtrl.text = item.content;
     _category = CategoryService.instance.resolveSync(item.categoryId);
     _pinnedByCaller = true; // don't auto-retag while editing
+    _checklistMode = item.checklistMode;
+    if (item.checklistMode && item.checklistData.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(item.checklistData) as List;
+        _checklistItems = decoded.cast<Map<String, dynamic>>();
+        for (final ci in _checklistItems) {
+          _checklistControllers.add(
+            TextEditingController(text: ci['text'] as String? ?? ''),
+          );
+        }
+      } catch (_) {}
+    }
+    _locationName = item.locationName;
+    _locationUrl = item.locationUrl;
     setState(() {});
   }
 
@@ -115,10 +137,62 @@ class _SaveScreenState extends State<SaveScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _contentCtrl.dispose();
+    for (final c in _checklistControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _save() async {
+    if (_checklistMode) {
+      // Build checklistData from controllers
+      final items = <Map<String, dynamic>>[];
+      for (var i = 0; i < _checklistControllers.length; i++) {
+        final text = _checklistControllers[i].text.trim();
+        if (text.isNotEmpty) {
+          items.add({
+            'text': text,
+            'checked': _checklistItems.length > i
+                ? (_checklistItems[i]['checked'] ?? false)
+                : false,
+          });
+        }
+      }
+      // Use a summary as content for search indexing
+      final summary = items.map((e) => e['text']).join(', ');
+      if (summary.isEmpty && !_saving) return;
+      setState(() => _saving = true);
+      final title = _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim();
+      if (_isEditing && _editingItem != null) {
+        final item = _editingItem!;
+        item.title = title;
+        item.content = summary;
+        item.categoryId = _category.id;
+        item.checklistMode = true;
+        item.checklistData = jsonEncode(items);
+        item.locationName = _locationName;
+        item.locationUrl = _locationUrl;
+        await MemoryRepository.instance.update(item);
+        if (!mounted) return;
+        context.pop();
+        return;
+      }
+      final mem = await MemoryRepository.instance.createTextMemory(
+        content: summary,
+        title: title,
+        forcedCategory: _category.builtin,
+        forcedCategoryId: _category.isBuiltin ? null : _category.id,
+      );
+      mem.checklistMode = true;
+      mem.checklistData = jsonEncode(items);
+      mem.locationName = _locationName;
+      mem.locationUrl = _locationUrl;
+      await MemoryRepository.instance.update(mem);
+      if (!mounted) return;
+      context.go('/');
+      showAppToast('Saved');
+      return;
+    }
     final text = _contentCtrl.text.trim();
     if (text.isEmpty || _saving) return;
     setState(() => _saving = true);
@@ -131,6 +205,8 @@ class _SaveScreenState extends State<SaveScreen> {
       item.title = title;
       item.content = text;
       item.categoryId = _category.id;
+      item.locationName = _locationName;
+      item.locationUrl = _locationUrl;
       await MemoryRepository.instance.update(item);
       if (!mounted) return;
       context.pop();
@@ -144,6 +220,11 @@ class _SaveScreenState extends State<SaveScreen> {
       forcedCategory: _category.builtin,
       forcedCategoryId: _category.isBuiltin ? null : _category.id,
     );
+    if (_locationName != null) {
+      mem.locationName = _locationName;
+      mem.locationUrl = _locationUrl;
+      await MemoryRepository.instance.update(mem);
+    }
     if (!mounted) return;
     // Only auto-redirect to reminder creation if the CLASSIFIER detected a
     // promise (not just because the user manually picked the Promise/Reminder
@@ -218,27 +299,139 @@ class _SaveScreenState extends State<SaveScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(DesignTokens.rInput),
-            ),
-            child: TextField(
-              controller: _contentCtrl,
-              autofocus: widget.prefillText == null,
-              maxLines: null,
-              minLines: 8,
-              decoration: const InputDecoration(
-                hintText: 'Type your memory…',
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                fillColor: Colors.transparent,
-                filled: false,
+          // Mode toggle
+          Row(
+            children: [
+              Text(
+                'MODE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
-              style: const TextStyle(fontSize: 15, height: 1.5),
+              const SizedBox(width: 12),
+              ChoiceChip(
+                label: const Text('Text'),
+                selected: !_checklistMode,
+                onSelected: (_) => setState(() {
+                  _checklistMode = false;
+                }),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: const Text('Checklist'),
+                selected: _checklistMode,
+                onSelected: (_) => setState(() {
+                  _checklistMode = true;
+                  if (_checklistControllers.isEmpty) {
+                    _checklistItems.add({'text': '', 'checked': false});
+                    _checklistControllers.add(TextEditingController());
+                  }
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!_checklistMode)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(DesignTokens.rInput),
+              ),
+              child: TextField(
+                controller: _contentCtrl,
+                autofocus: widget.prefillText == null,
+                maxLines: null,
+                minLines: 8,
+                decoration: const InputDecoration(
+                  hintText: 'Type your memory…',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  filled: false,
+                ),
+                style: const TextStyle(fontSize: 15, height: 1.5),
+              ),
+            )
+          else
+            _ChecklistEditor(
+              controllers: _checklistControllers,
+              items: _checklistItems,
+              onChanged: () => setState(() {}),
+            ),
+          const SizedBox(height: 18),
+          // Location section
+          Text(
+            'LOCATION',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () async {
+              final result = await showLocationPicker(
+                context,
+                initialName: _locationName,
+              );
+              if (result != null) {
+                setState(() {
+                  _locationName = result.name;
+                  _locationUrl = result.mapsUrl;
+                });
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.location_on_rounded,
+                    size: 18,
+                    color: _locationName != null
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _locationName ?? 'Add location (optional)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: _locationName != null
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: _locationName != null
+                            ? scheme.onSurface
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (_locationName != null)
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _locationName = null;
+                        _locationUrl = null;
+                      }),
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: scheme.onSurfaceVariant),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -264,6 +457,131 @@ class _SaveScreenState extends State<SaveScreen> {
                 ),
               _NewCategoryChip(onTap: _createCustomCategory),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChecklistEditor extends StatelessWidget {
+  const _ChecklistEditor({
+    required this.controllers,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final List<TextEditingController> controllers;
+  final List<Map<String, dynamic>> items;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < controllers.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      items[i]['checked'] = !(items[i]['checked'] as bool? ?? false);
+                      onChanged();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: (items[i]['checked'] as bool? ?? false)
+                            ? scheme.primary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: (items[i]['checked'] as bool? ?? false)
+                              ? scheme.primary
+                              : scheme.outlineVariant,
+                          width: 2,
+                        ),
+                      ),
+                      child: (items[i]['checked'] as bool? ?? false)
+                          ? const Icon(Icons.check_rounded,
+                              size: 13, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: controllers[i],
+                      decoration: InputDecoration(
+                        hintText: 'Item ${i + 1}',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      style: TextStyle(
+                        fontSize: 15,
+                        decoration: (items[i]['checked'] as bool? ?? false)
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: (items[i]['checked'] as bool? ?? false)
+                            ? scheme.onSurfaceVariant
+                            : scheme.onSurface,
+                      ),
+                      onSubmitted: (_) {
+                        items.add({'text': '', 'checked': false});
+                        controllers.add(TextEditingController());
+                        onChanged();
+                      },
+                    ),
+                  ),
+                  if (controllers.length > 1)
+                    GestureDetector(
+                      onTap: () {
+                        controllers[i].dispose();
+                        controllers.removeAt(i);
+                        items.removeAt(i);
+                        onChanged();
+                      },
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: scheme.onSurfaceVariant),
+                    ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () {
+              items.add({'text': '', 'checked': false});
+              controllers.add(TextEditingController());
+              onChanged();
+            },
+            child: Row(
+              children: [
+                Icon(Icons.add_circle_outline_rounded,
+                    size: 20, color: scheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Add item',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

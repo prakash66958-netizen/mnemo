@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -155,6 +156,20 @@ class MemoryDetailScreen extends ConsumerWidget {
                   if (item.rawUrl != null) ...[
                     const SizedBox(height: 8),
                     _OpenLinkRow(url: item.rawUrl!),
+                  ],
+                  // Checklist display
+                  if (item.checklistMode && item.checklistData.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _ChecklistView(item: item),
+                  ],
+                  // Location display
+                  if (item.locationName != null &&
+                      item.locationName!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _LocationRow(
+                      name: item.locationName!,
+                      url: item.locationUrl,
+                    ),
                   ],
                   if (item.tags.isNotEmpty) ...[
                     const SizedBox(height: 14),
@@ -711,5 +726,189 @@ class _CopyTextButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Interactive checklist view shown in the detail screen.
+/// Users can check/uncheck items directly here.
+class _ChecklistView extends StatefulWidget {
+  const _ChecklistView({required this.item});
+  final MemoryItem item;
+
+  @override
+  State<_ChecklistView> createState() => _ChecklistViewState();
+}
+
+class _ChecklistViewState extends State<_ChecklistView> {
+  late List<Map<String, dynamic>> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    try {
+      final decoded = jsonDecode(widget.item.checklistData) as List;
+      _items = decoded.cast<Map<String, dynamic>>();
+    } catch (_) {
+      _items = [];
+    }
+  }
+
+  Future<void> _toggle(int index) async {
+    setState(() {
+      _items[index]['checked'] = !(_items[index]['checked'] as bool? ?? false);
+    });
+    widget.item.checklistData = jsonEncode(_items);
+    await MemoryRepository.instance.update(widget.item);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (_items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CHECKLIST',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < _items.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: GestureDetector(
+                onTap: () => _toggle(i),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: (_items[i]['checked'] as bool? ?? false)
+                            ? scheme.primary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: (_items[i]['checked'] as bool? ?? false)
+                              ? scheme.primary
+                              : scheme.outlineVariant,
+                          width: 2,
+                        ),
+                      ),
+                      child: (_items[i]['checked'] as bool? ?? false)
+                          ? const Icon(Icons.check_rounded,
+                              size: 13, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _items[i]['text'] as String? ?? '',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          decoration: (_items[i]['checked'] as bool? ?? false)
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: (_items[i]['checked'] as bool? ?? false)
+                              ? scheme.onSurfaceVariant
+                              : scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable location row that opens Google Maps.
+class _LocationRow extends StatelessWidget {
+  const _LocationRow({required this.name, this.url});
+  final String name;
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.primaryContainer.withValues(alpha: 0.25),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: url != null ? () => _openMaps(context) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.location_on_rounded,
+                  size: 20, color: scheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    if (url != null)
+                      Text(
+                        'Tap to open in Google Maps',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (url != null)
+                Icon(Icons.open_in_new_rounded,
+                    size: 18, color: scheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMaps(BuildContext context) async {
+    final uri = Uri.tryParse(url!);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Maps')),
+        );
+      }
+    }
   }
 }

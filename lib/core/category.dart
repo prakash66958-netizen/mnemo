@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 /// custom categories live side-by-side with these, exposed via [CategoryDef]
 /// and the CategoryService.
 enum MemoryCategory {
-  reminder('reminder', 'Reminder', Icons.alarm_rounded, Color(0xFFEF4444)),
+  reminder('reminder', 'Remember', Icons.alarm_rounded, Color(0xFFEF4444)),
   promise('promise', 'Promise', Icons.handshake_rounded, Color(0xFFF59E0B)),
   task('task', 'Task', Icons.check_circle_rounded, Color(0xFF10B981)),
   watchLater(

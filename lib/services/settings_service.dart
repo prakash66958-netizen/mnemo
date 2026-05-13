@@ -59,4 +59,28 @@ class SettingsService {
     final prefs = await _ensure();
     await prefs.setString(AppConstants.prefLanguage, code);
   }
+
+  Future<bool> getInboxCheckboxEnabled() async {
+    final prefs = await _ensure();
+    return prefs.getBool(AppConstants.prefInboxCheckboxEnabled) ?? true;
+  }
+
+  Future<void> setInboxCheckboxEnabled(bool enabled) async {
+    final prefs = await _ensure();
+    await prefs.setBool(AppConstants.prefInboxCheckboxEnabled, enabled);
+  }
+
+  Future<int> getInboxDeleteAfterHours() async {
+    final prefs = await _ensure();
+    // New key stores minutes; fall back to old hours key × 60.
+    final minutes = prefs.getInt(AppConstants.prefInboxDeleteAfterMinutes);
+    if (minutes != null) return minutes; // caller treats this as minutes now
+    final hours = prefs.getInt(AppConstants.prefInboxDeleteAfterHours) ?? 24;
+    return hours * 60; // convert legacy hours → minutes
+  }
+
+  Future<void> setInboxDeleteAfterHours(int minutes) async {
+    final prefs = await _ensure();
+    await prefs.setInt(AppConstants.prefInboxDeleteAfterMinutes, minutes);
+  }
 }

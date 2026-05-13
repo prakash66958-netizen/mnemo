@@ -233,3 +233,47 @@ class AdvancedFilter {
 
 final inboxAdvancedFilterProvider =
     StateProvider<AdvancedFilter>((ref) => const AdvancedFilter());
+
+/// Whether inbox checkboxes are visible.
+final inboxCheckboxEnabledProvider =
+    StateNotifierProvider<InboxCheckboxNotifier, bool>((ref) {
+  return InboxCheckboxNotifier(ref.watch(settingsServiceProvider));
+});
+
+class InboxCheckboxNotifier extends StateNotifier<bool> {
+  InboxCheckboxNotifier(this._settings) : super(true) {
+    _load();
+  }
+  final SettingsService _settings;
+
+  Future<void> _load() async {
+    state = await _settings.getInboxCheckboxEnabled();
+  }
+
+  Future<void> set(bool enabled) async {
+    state = enabled;
+    await _settings.setInboxCheckboxEnabled(enabled);
+  }
+}
+
+/// Auto-delete duration for checked-off inbox items (in hours).
+final inboxDeleteAfterHoursProvider =
+    StateNotifierProvider<InboxDeleteNotifier, int>((ref) {
+  return InboxDeleteNotifier(ref.watch(settingsServiceProvider));
+});
+
+class InboxDeleteNotifier extends StateNotifier<int> {
+  InboxDeleteNotifier(this._settings) : super(1440) {
+    _load();
+  }
+  final SettingsService _settings;
+
+  Future<void> _load() async {
+    state = await _settings.getInboxDeleteAfterHours(); // returns minutes
+  }
+
+  Future<void> set(int minutes) async {
+    state = minutes;
+    await _settings.setInboxDeleteAfterHours(minutes); // stores minutes
+  }
+}
