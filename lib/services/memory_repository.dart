@@ -521,10 +521,42 @@ class MemoryRepository {
       oldIds.add(raw['id'] as int?);
     }
 
+    // ── Deduplication ──────────────────────────────────────────────────────
+    // Build a key from (content, createdAt-ms) and skip imports that already
+    // exist locally. When the local copy is older than the imported one, we
+    // overwrite it instead of creating a duplicate.
+    final existing = await _isar.memoryItems.where().findAll();
+    final existingByKey = <String, MemoryItem>{};
+    String dedupKey(MemoryItem m) =>
+        '${m.content}\u0001${m.createdAt.millisecondsSinceEpoch}';
+    for (final e in existing) {
+      existingByKey[dedupKey(e)] = e;
+    }
+
     var imported = 0;
     await _isar.writeTxn(() async {
       for (var i = 0; i < prepared.length; i++) {
-        final newId = await _isar.memoryItems.put(prepared[i]);
+        final m = prepared[i];
+        final key = dedupKey(m);
+        final dup = existingByKey[key];
+        if (dup != null) {
+          // Already have it locally — keep whichever was edited more recently.
+          if (m.updatedAt.isAfter(dup.updatedAt)) {
+            m.id = dup.id; // overwrite
+            await _isar.memoryItems.put(m);
+            if (oldIds[i] != null && idMap != null) {
+              idMap[oldIds[i]!] = dup.id;
+            }
+          } else {
+            // Local copy is newer — skip the import entirely.
+            if (oldIds[i] != null && idMap != null) {
+              idMap[oldIds[i]!] = dup.id;
+            }
+          }
+          continue;
+        }
+        final newId = await _isar.memoryItems.put(m);
+        existingByKey[key] = m; // in case the same backup contains duplicates
         final oldId = oldIds[i];
         if (oldId != null && idMap != null) idMap[oldId] = newId;
         imported++;
@@ -576,6 +608,15 @@ class MemoryRepository {
     List<dynamic> list,
     Map<int, int> idMap,
   ) async {
+    // Build a dedup key from (name, createdAt-ms).
+    final existing = await _isar.habits.where().findAll();
+    final existingByKey = <String, Habit>{};
+    String habitKey(Habit h) =>
+        '${h.name}\u0001${h.createdAt.millisecondsSinceEpoch}';
+    for (final h in existing) {
+      existingByKey[habitKey(h)] = h;
+    }
+
     final toSchedule = <Habit>[];
     await _isar.writeTxn(() async {
       for (final raw in list) {
@@ -593,9 +634,17 @@ class MemoryRepository {
           ..intervalMinutes = (raw['intervalMinutes'] ?? 0) as int
           ..intervalEndHour = (raw['intervalEndHour'] ?? 22) as int
           ..notificationId = 0;
+        final key = habitKey(h);
+        final dup = existingByKey[key];
+        if (dup != null) {
+          // Already exists — reuse the local id, skip the import.
+          if (oldId != null) idMap[oldId] = dup.id;
+          continue;
+        }
         final newId = await _isar.habits.put(h);
         h.notificationId = (newId + 100000) & 0x7FFFFFFF;
         await _isar.habits.put(h);
+        existingByKey[key] = h;
         if (oldId != null) idMap[oldId] = newId;
         toSchedule.add(h);
       }
@@ -628,6 +677,13 @@ class MemoryRepository {
     List<dynamic> list,
     Map<int, int> habitIdMap,
   ) async {
+    // Dedup key: (habitId, normalized-day) so we never import the same
+    // completion twice.
+    final existing = await _isar.habitCompletions.where().findAll();
+    final existingKeys = <String>{
+      for (final c in existing)
+        '${c.habitId}\u0001${c.date.millisecondsSinceEpoch}',
+    };
     await _isar.writeTxn(() async {
       for (final raw in list) {
         if (raw is! Map) continue;
@@ -635,14 +691,18 @@ class MemoryRepository {
         if (oldHabitId == null) continue;
         final newHabitId = habitIdMap[oldHabitId];
         if (newHabitId == null) continue;
+        final date = DateTime.tryParse(raw['date'] as String? ?? '') ??
+            DateTime.now();
+        final key = '$newHabitId\u0001${date.millisecondsSinceEpoch}';
+        if (existingKeys.contains(key)) continue;
         final c = HabitCompletion()
           ..habitId = newHabitId
-          ..date = DateTime.tryParse(raw['date'] as String? ?? '') ??
-              DateTime.now()
+          ..date = date
           ..completedAt =
               DateTime.tryParse(raw['completedAt'] as String? ?? '') ??
                   DateTime.now();
         await _isar.habitCompletions.put(c);
+        existingKeys.add(key);
       }
     });
   }

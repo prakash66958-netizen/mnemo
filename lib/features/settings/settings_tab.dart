@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -289,6 +290,22 @@ class _GoogleDriveRow extends ConsumerStatefulWidget {
 class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
   bool _syncing = false;
   bool _signInFailed = false; // true after a sign-in failure, reset on retry
+  Timer? _ticker; // refreshes the "X ago" label every 30s
+
+  @override
+  void initState() {
+    super.initState();
+    // Update the "Synced X ago" label live without waiting for a rebuild.
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
 
   String _syncLabel(DateTime? last) {
     if (last == null) return 'Never synced';

@@ -9,9 +9,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../models/habit.dart';
 import '../../services/habit_repository.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../habits/habit_editor_sheet.dart';
@@ -22,27 +25,67 @@ import '../shared/providers.dart';
 
 enum PomPhase { work, shortBreak, longBreak }
 
+/// Customisable phase durations (in seconds). Defaults match the classic
+/// Pomodoro technique: 25/5/15. The user can override these from the timer
+/// settings sheet.
+class PomDurations {
+  const PomDurations({
+    required this.workSecs,
+    required this.shortSecs,
+    required this.longSecs,
+  });
+
+  final int workSecs;
+  final int shortSecs;
+  final int longSecs;
+
+  static const defaults = PomDurations(
+    workSecs: 25 * 60,
+    shortSecs: 5 * 60,
+    longSecs: 15 * 60,
+  );
+
+  int forPhase(PomPhase phase) {
+    switch (phase) {
+      case PomPhase.work:
+        return workSecs;
+      case PomPhase.shortBreak:
+        return shortSecs;
+      case PomPhase.longBreak:
+        return longSecs;
+    }
+  }
+
+  PomDurations copyWith({int? workSecs, int? shortSecs, int? longSecs}) =>
+      PomDurations(
+        workSecs: workSecs ?? this.workSecs,
+        shortSecs: shortSecs ?? this.shortSecs,
+        longSecs: longSecs ?? this.longSecs,
+      );
+}
+
 class PomodoroState {
   const PomodoroState({
     required this.phase,
     required this.secondsLeft,
     required this.running,
     required this.session,
+    required this.durations,
   });
   final PomPhase phase;
   final int secondsLeft;
   final bool running;
   final int session; // 1..4 before long break
+  final PomDurations durations;
 
-  static const _workSecs = 25 * 60;
-  static const _shortSecs = 5 * 60;
-  static const _longSecs = 15 * 60;
-
-  factory PomodoroState.initial() => const PomodoroState(
+  factory PomodoroState.initial(
+          [PomDurations durations = PomDurations.defaults]) =>
+      PomodoroState(
         phase: PomPhase.work,
-        secondsLeft: _workSecs,
+        secondsLeft: durations.workSecs,
         running: false,
         session: 1,
+        durations: durations,
       );
 
   PomodoroState copyWith({
@@ -50,12 +93,14 @@ class PomodoroState {
     int? secondsLeft,
     bool? running,
     int? session,
+    PomDurations? durations,
   }) =>
       PomodoroState(
         phase: phase ?? this.phase,
         secondsLeft: secondsLeft ?? this.secondsLeft,
         running: running ?? this.running,
         session: session ?? this.session,
+        durations: durations ?? this.durations,
       );
 
   String get label {
@@ -76,27 +121,158 @@ class PomodoroState {
   }
 
   double get progress {
-    final total = phase == PomPhase.work
-        ? _workSecs
-        : phase == PomPhase.shortBreak
-            ? _shortSecs
-            : _longSecs;
-    return 1.0 - (secondsLeft / total);
+    final total = durations.forPhase(phase);
+    return total > 0 ? 1.0 - (secondsLeft / total) : 0.0;
   }
 }
 
+/// Persistent, kill-resilient Pomodoro state.
+///
+/// Storage strategy:
+/// - When running, we persist the absolute end-timestamp (`prefPomEndsAt`).
+///   On restore we compute `secondsLeft = endsAt - now` so the timer keeps
+///   ticking accurately even if the app was killed for an hour.
+/// - When paused, we persist `secondsLeft` directly.
+/// - We also schedule a local notification at the end-timestamp so the user
+///   gets an "alarm" when the phase ends — even if the app is closed.
 class PomodoroNotifier extends StateNotifier<PomodoroState> {
-  PomodoroNotifier() : super(PomodoroState.initial());
+  PomodoroNotifier() : super(PomodoroState.initial()) {
+    _restore();
+  }
+
   Timer? _timer;
+
+  Future<void> _restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final durations = PomDurations(
+      workSecs:
+          prefs.getInt(AppConstants.prefPomWorkSecs) ?? PomDurations.defaults.workSecs,
+      shortSecs: prefs.getInt(AppConstants.prefPomShortSecs) ??
+          PomDurations.defaults.shortSecs,
+      longSecs: prefs.getInt(AppConstants.prefPomLongSecs) ??
+          PomDurations.defaults.longSecs,
+    );
+
+    final phaseName = prefs.getString(AppConstants.prefPomPhase);
+    final phase = PomPhase.values.firstWhere(
+      (p) => p.name == phaseName,
+      orElse: () => PomPhase.work,
+    );
+    final session = prefs.getInt(AppConstants.prefPomSession) ?? 1;
+    final running = prefs.getBool(AppConstants.prefPomRunning) ?? false;
+    final endsAtStr = prefs.getString(AppConstants.prefPomEndsAt);
+
+    int secondsLeft = durations.forPhase(phase);
+    bool stillRunning = running;
+
+    if (running && endsAtStr != null) {
+      final endsAt = DateTime.tryParse(endsAtStr);
+      if (endsAt != null) {
+        final remaining = endsAt.difference(DateTime.now()).inSeconds;
+        if (remaining > 0) {
+          secondsLeft = remaining;
+        } else {
+          // Phase ended while the app was closed — stop and reset to next
+          // phase's full duration so the user can start it fresh.
+          stillRunning = false;
+          secondsLeft = durations.forPhase(phase);
+        }
+      }
+    } else {
+      secondsLeft = prefs.getInt(AppConstants.prefPomSecsLeft) ??
+          durations.forPhase(phase);
+    }
+
+    state = PomodoroState(
+      phase: phase,
+      secondsLeft: secondsLeft,
+      running: stillRunning,
+      session: session,
+      durations: durations,
+    );
+
+    // Resume the ticking timer if we were running.
+    if (stillRunning) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    }
+  }
+
+  Future<void> _persist({DateTime? endsAt}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AppConstants.prefPomPhase, state.phase.name);
+    await prefs.setInt(AppConstants.prefPomSession, state.session);
+    await prefs.setBool(AppConstants.prefPomRunning, state.running);
+    await prefs.setInt(AppConstants.prefPomSecsLeft, state.secondsLeft);
+    if (endsAt != null) {
+      await prefs.setString(
+          AppConstants.prefPomEndsAt, endsAt.toIso8601String());
+    } else {
+      await prefs.remove(AppConstants.prefPomEndsAt);
+    }
+  }
+
+  /// Updates the user's custom durations and resets the current phase to its
+  /// new full length (only when not running).
+  Future<void> setDurations(PomDurations d) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.prefPomWorkSecs, d.workSecs);
+    await prefs.setInt(AppConstants.prefPomShortSecs, d.shortSecs);
+    await prefs.setInt(AppConstants.prefPomLongSecs, d.longSecs);
+    if (state.running) {
+      // Apply only the durations object — keep the running countdown intact.
+      state = state.copyWith(durations: d);
+    } else {
+      state = state.copyWith(
+        durations: d,
+        secondsLeft: d.forPhase(state.phase),
+      );
+      await _persist();
+    }
+  }
 
   void toggle() {
     if (state.running) {
-      _timer?.cancel();
-      state = state.copyWith(running: false);
+      _pause();
     } else {
-      state = state.copyWith(running: true);
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      _start();
     }
+  }
+
+  Future<void> _start() async {
+    final endsAt = DateTime.now().add(Duration(seconds: state.secondsLeft));
+    state = state.copyWith(running: true);
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    await _persist(endsAt: endsAt);
+    await _scheduleEndNotification(endsAt);
+  }
+
+  Future<void> _pause() async {
+    _timer?.cancel();
+    state = state.copyWith(running: false);
+    await _persist();
+    await NotificationService.instance.cancelFocusEnd();
+  }
+
+  Future<void> _scheduleEndNotification(DateTime endsAt) async {
+    final String title;
+    final String body;
+    switch (state.phase) {
+      case PomPhase.work:
+        title = '🎯 Focus session complete';
+        body = 'Great work! Time for a break.';
+      case PomPhase.shortBreak:
+        title = '☕ Break\'s over';
+        body = 'Ready to focus? Tap to start the next session.';
+      case PomPhase.longBreak:
+        title = '🌟 Long break done';
+        body = 'Recharged and ready. Let\'s go!';
+    }
+    await NotificationService.instance.scheduleFocusEnd(
+      when: endsAt,
+      title: title,
+      body: body,
+    );
   }
 
   void _tick() {
@@ -108,52 +284,57 @@ class PomodoroNotifier extends StateNotifier<PomodoroState> {
     }
   }
 
-  void _advance() {
+  Future<void> _advance() async {
+    await NotificationService.instance.cancelFocusEnd();
     if (state.phase == PomPhase.work) {
       final nextSession = state.session + 1;
       if (nextSession > 4) {
-        state = const PomodoroState(
+        state = PomodoroState(
           phase: PomPhase.longBreak,
-          secondsLeft: PomodoroState._longSecs,
+          secondsLeft: state.durations.longSecs,
           running: false,
           session: 1,
+          durations: state.durations,
         );
       } else {
         state = PomodoroState(
           phase: PomPhase.shortBreak,
-          secondsLeft: PomodoroState._shortSecs,
+          secondsLeft: state.durations.shortSecs,
           running: false,
           session: nextSession,
+          durations: state.durations,
         );
       }
     } else {
       state = PomodoroState(
         phase: PomPhase.work,
-        secondsLeft: PomodoroState._workSecs,
+        secondsLeft: state.durations.workSecs,
         running: false,
         session: state.session,
+        durations: state.durations,
       );
     }
+    await _persist();
   }
 
-  void reset() {
+  Future<void> reset() async {
     _timer?.cancel();
-    state = PomodoroState.initial();
+    state = PomodoroState.initial(state.durations);
+    await _persist();
+    await NotificationService.instance.cancelFocusEnd();
   }
 
-  void skipTo(PomPhase phase) {
+  Future<void> skipTo(PomPhase phase) async {
     _timer?.cancel();
-    final secs = phase == PomPhase.work
-        ? PomodoroState._workSecs
-        : phase == PomPhase.shortBreak
-            ? PomodoroState._shortSecs
-            : PomodoroState._longSecs;
     state = PomodoroState(
       phase: phase,
-      secondsLeft: secs,
+      secondsLeft: state.durations.forPhase(phase),
       running: false,
       session: state.session,
+      durations: state.durations,
     );
+    await _persist();
+    await NotificationService.instance.cancelFocusEnd();
   }
 
   @override
@@ -451,7 +632,7 @@ class _TimerSection extends ConsumerWidget {
                   minimumSize: const Size(48, 48),
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
               SizedBox(
                 width: 160,
                 height: 52,
@@ -472,6 +653,25 @@ class _TimerSection extends ConsumerWidget {
                     backgroundColor: phaseColor,
                     foregroundColor: Colors.white,
                   ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              IconButton.outlined(
+                onPressed: pom.running
+                    ? null
+                    : () => showModalBottomSheet<void>(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          builder: (_) => _DurationsSheet(
+                            current: pom.durations,
+                          ),
+                        ),
+                icon: const Icon(Icons.tune_rounded),
+                tooltip: 'Customise durations',
+                style: IconButton.styleFrom(
+                  foregroundColor: scheme.onSurfaceVariant,
+                  minimumSize: const Size(48, 48),
                 ),
               ),
             ],
@@ -1146,3 +1346,237 @@ class _HabitDetailSheet extends StatelessWidget {
   }
 }
 
+
+// ── Custom durations bottom sheet ────────────────────────────────────────────
+
+/// Bottom sheet that lets the user pick custom durations for each Pomodoro
+/// phase. Shows quick-pick presets (15, 25, 30, 45, 60 for focus; 5, 10, 15
+/// for breaks) plus a custom number input for any other value.
+class _DurationsSheet extends ConsumerStatefulWidget {
+  const _DurationsSheet({required this.current});
+  final PomDurations current;
+
+  @override
+  ConsumerState<_DurationsSheet> createState() => _DurationsSheetState();
+}
+
+class _DurationsSheetState extends ConsumerState<_DurationsSheet> {
+  late int _workMin;
+  late int _shortMin;
+  late int _longMin;
+
+  @override
+  void initState() {
+    super.initState();
+    _workMin = widget.current.workSecs ~/ 60;
+    _shortMin = widget.current.shortSecs ~/ 60;
+    _longMin = widget.current.longSecs ~/ 60;
+  }
+
+  Future<void> _save() async {
+    final d = PomDurations(
+      workSecs: _workMin.clamp(1, 180) * 60,
+      shortSecs: _shortMin.clamp(1, 60) * 60,
+      longSecs: _longMin.clamp(1, 120) * 60,
+    );
+    await ref.read(pomodoroProvider.notifier).setDurations(d);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, MediaQuery.viewInsetsOf(context).bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
+              'Customise durations',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Set the length of each phase. Defaults match the classic Pomodoro: 25 / 5 / 15 minutes.',
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _DurationPicker(
+              label: 'Focus',
+              icon: Icons.timer_rounded,
+              minutes: _workMin,
+              presets: const [15, 25, 30, 45, 60, 90],
+              maxMinutes: 180,
+              onChanged: (v) => setState(() => _workMin = v),
+            ),
+            const SizedBox(height: 14),
+            _DurationPicker(
+              label: 'Short Break',
+              icon: Icons.coffee_rounded,
+              minutes: _shortMin,
+              presets: const [3, 5, 7, 10],
+              maxMinutes: 60,
+              onChanged: (v) => setState(() => _shortMin = v),
+            ),
+            const SizedBox(height: 14),
+            _DurationPicker(
+              label: 'Long Break',
+              icon: Icons.spa_rounded,
+              minutes: _longMin,
+              presets: const [10, 15, 20, 30],
+              maxMinutes: 120,
+              onChanged: (v) => setState(() => _longMin = v),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _save,
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DurationPicker extends StatelessWidget {
+  const _DurationPicker({
+    required this.label,
+    required this.icon,
+    required this.minutes,
+    required this.presets,
+    required this.maxMinutes,
+    required this.onChanged,
+  });
+  final String label;
+  final IconData icon;
+  final int minutes;
+  final List<int> presets;
+  final int maxMinutes;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isCustom = !presets.contains(minutes);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              Text(
+                '$minutes min',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final p in presets)
+                ChoiceChip(
+                  label: Text('$p'),
+                  selected: minutes == p,
+                  onSelected: (_) => onChanged(p),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ChoiceChip(
+                label: Text(isCustom ? 'Custom · $minutes' : 'Custom…'),
+                selected: isCustom,
+                onSelected: (_) => _showCustomDialog(context),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCustomDialog(BuildContext context) async {
+    final controller = TextEditingController(text: '$minutes');
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('$label duration'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Minutes (1–$maxMinutes)',
+            suffixText: 'min',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text.trim());
+              if (v != null && v >= 1 && v <= maxMinutes) {
+                Navigator.pop(ctx, v);
+              }
+            },
+            child: const Text('Set'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) onChanged(result);
+  }
+}

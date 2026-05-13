@@ -67,6 +67,21 @@ class NotificationService {
       ),
     );
 
+    // Pomodoro / Focus notifications get their own channel so the user can
+    // adjust priority/sound independently of regular reminders.
+    await androidImpl?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        AppConstants.focusChannelId,
+        AppConstants.focusChannelName,
+        description: AppConstants.focusChannelDesc,
+        importance: Importance.max,
+        enableLights: true,
+        enableVibration: true,
+        ledColor: _kAccentColor,
+        playSound: true,
+      ),
+    );
+
     // Request POST_NOTIFICATIONS on Android 13+ (no-op below).
     await androidImpl?.requestNotificationsPermission();
     await androidImpl?.requestExactAlarmsPermission();
@@ -286,5 +301,71 @@ class NotificationService {
 
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
+  }
+
+  // ── Pomodoro / Focus notifications ─────────────────────────────────────────
+
+  /// Shared Android details for Focus end notifications. Uses the dedicated
+  /// focus channel and the alarm category so the OS treats it like an alarm
+  /// (full-volume, bypass DND when the user grants the permission).
+  AndroidNotificationDetails _focusDetails() {
+    return const AndroidNotificationDetails(
+      AppConstants.focusChannelId,
+      AppConstants.focusChannelName,
+      channelDescription: AppConstants.focusChannelDesc,
+      importance: Importance.max,
+      priority: Priority.max,
+      category: AndroidNotificationCategory.alarm,
+      icon: _kSmallIcon,
+      color: _kAccentColor,
+      fullScreenIntent: false,
+      enableVibration: true,
+      vibrationPattern: null,
+      playSound: true,
+    );
+  }
+
+  /// Schedules a Focus end notification at [when]. Uses an exact alarm so the
+  /// notification fires even if the app is killed.
+  Future<void> scheduleFocusEnd({
+    required DateTime when,
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) await init();
+    final scheduled = tz.TZDateTime.from(when, tz.local);
+    final details = NotificationDetails(android: _focusDetails());
+    try {
+      await _plugin.zonedSchedule(
+        AppConstants.focusNotificationId,
+        title,
+        body,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'focus',
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] focus exact alarm failed ($e); '
+          'falling back to inexact');
+      await _plugin.zonedSchedule(
+        AppConstants.focusNotificationId,
+        title,
+        body,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'focus',
+      );
+    }
+  }
+
+  /// Cancels any scheduled focus end notification.
+  Future<void> cancelFocusEnd() async {
+    await _plugin.cancel(AppConstants.focusNotificationId);
   }
 }

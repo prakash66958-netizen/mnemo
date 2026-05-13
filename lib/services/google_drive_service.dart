@@ -102,6 +102,7 @@ class GoogleDriveService {
   }
 
   /// Full sync: download → merge → upload.
+  /// Used for first sign-in, manual "Sync now", and app-launch auto-sync.
   /// Safe to call even when not signed in — returns an error result.
   Future<SyncResult> syncNow() async {
     if (!isSignedIn) {
@@ -149,30 +150,62 @@ class GoogleDriveService {
     }
   }
 
+  /// Upload-only sync: pushes the current local DB to Drive, overwriting
+  /// the existing backup. Used by [scheduleSync] after every local write
+  /// so deletes propagate correctly (the merge-import path would re-create
+  /// just-deleted items because the Drive backup still has them).
+  Future<SyncResult> uploadOnly() async {
+    if (!isSignedIn) {
+      return const SyncResult(
+          uploaded: false, mergedItems: 0, error: 'Not signed in');
+    }
+    if (_isSyncing) {
+      return const SyncResult(
+          uploaded: false, mergedItems: 0, error: 'Sync already in progress');
+    }
+    _isSyncing = true;
+    try {
+      final client = await _authClient();
+      if (client == null) {
+        return const SyncResult(
+            uploaded: false, mergedItems: 0, error: 'Auth failed');
+      }
+      final driveApi = drive.DriveApi(client);
+
+      final existing = await _findBackupFile(driveApi);
+      final exportData = await MemoryRepository.instance.exportAll();
+      final jsonBytes = utf8.encode(jsonEncode(exportData));
+      await _uploadFile(driveApi, existing?.id, jsonBytes);
+
+      await SettingsService.instance.setLastDriveSync(DateTime.now());
+      client.close();
+      return const SyncResult(uploaded: true, mergedItems: 0);
+    } catch (e) {
+      return SyncResult(uploaded: false, mergedItems: 0, error: e.toString());
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
   // ── Debounced auto-sync ────────────────────────────────────────────────────
 
   Timer? _debounceTimer;
   bool _isSyncing = false; // prevents re-entrant sync loops
 
   /// Call this after every local write (create, update, delete).
-  /// Waits [delay] (default 3 s) for further writes to settle, then runs
-  /// a full sync. Rapid consecutive writes are coalesced into one upload.
+  /// Waits [delay] (default 3 s) for further writes to settle, then uploads
+  /// the current local DB to Drive. Rapid writes are coalesced into one
+  /// upload. Uses upload-only (not merge sync) so deletes propagate.
   /// Does nothing when the user is not signed in or a sync is already running.
   void scheduleSync({Duration delay = const Duration(seconds: 3)}) {
     if (!isSignedIn || _isSyncing) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(delay, () async {
       if (_isSyncing) return;
-      _isSyncing = true;
       try {
-        final result = await syncNow();
-        if (result.success) {
-          await SettingsService.instance.setLastDriveSync(DateTime.now());
-        }
+        await uploadOnly();
       } catch (_) {
         // Silent — auto-sync failures must never surface to the user.
-      } finally {
-        _isSyncing = false;
       }
     });
   }
