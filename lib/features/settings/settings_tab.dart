@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../services/database_service.dart';
+import '../../services/google_drive_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/settings_service.dart';
 import '../../services/share_out_service.dart';
@@ -113,6 +114,10 @@ class SettingsTab extends ConsumerWidget {
                       _CheckboxToggleRow(),
                       _AutoDeleteRow(),
                     ],
+                  ),
+                  _Group(
+                    title: 'Google Drive',
+                    children: [_GoogleDriveRow()],
                   ),
                   _Group(
                     title: 'Data',
@@ -282,6 +287,187 @@ class SettingsTab extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+// ── Google Drive backup row ───────────────────────────────────────────────────
+
+class _GoogleDriveRow extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_GoogleDriveRow> createState() => _GoogleDriveRowState();
+}
+
+class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
+  bool _syncing = false;
+
+  String _syncLabel(DateTime? last) {
+    if (last == null) return 'Never synced';
+    final diff = DateTime.now().difference(last);
+    if (diff.inMinutes < 1) return 'Synced just now';
+    if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return 'Synced ${diff.inHours}h ago';
+    return 'Synced ${diff.inDays}d ago';
+  }
+
+  Future<void> _signIn() async {
+    final account = await GoogleDriveService.instance.signIn();
+    if (account == null || !mounted) return;
+    ref.read(googleEmailProvider.notifier).set(account.email);
+
+    // On first sign-in, restore from Drive then do a full sync.
+    setState(() => _syncing = true);
+    try {
+      final restore = await GoogleDriveService.instance.restoreFromDrive();
+      final sync = await GoogleDriveService.instance.syncNow();
+      if (!mounted) return;
+      ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
+      final total = restore.mergedItems + sync.mergedItems;
+      if (total > 0) {
+        showAppToast('Restored $total items from Drive');
+      } else {
+        showAppToast('Drive backup linked — syncing automatically');
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _syncNow() async {
+    setState(() => _syncing = true);
+    try {
+      final result = await GoogleDriveService.instance.syncNow();
+      if (!mounted) return;
+      if (result.success) {
+        ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
+        showAppToast(result.mergedItems > 0
+            ? 'Synced — ${result.mergedItems} new items restored'
+            : 'Drive backup up to date');
+      } else {
+        showAppToast('Sync failed: ${result.error}');
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out of Google?'),
+        content: const Text(
+          'Your local data stays on this device. '
+          'Drive backup will stop until you sign in again.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton.tonal(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sign out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await GoogleDriveService.instance.signOut();
+    ref.read(googleEmailProvider.notifier).set(null);
+    ref.read(lastDriveSyncProvider.notifier).set(null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final email = ref.watch(googleEmailProvider);
+    final lastSync = ref.watch(lastDriveSyncProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final signedIn = email != null;
+
+    if (!signedIn) {
+      return _Row(
+        icon: Icons.add_to_drive_rounded,
+        iconColor: const Color(0xFF4285F4),
+        title: 'Back up to Google Drive',
+        subtitle: 'Sign in to sync your data automatically',
+        onTap: _syncing ? null : _signIn,
+        trailing: _syncing
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: scheme.primary),
+              )
+            : null,
+      );
+    }
+
+    // Signed in — show account + sync controls.
+    return Column(
+      children: [
+        // Account row.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.add_to_drive_rounded,
+                    color: Color(0xFF4285F4), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      email,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _syncLabel(lastSync),
+                      style: TextStyle(
+                          fontSize: 12, color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              if (_syncing)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: scheme.primary),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.sync_rounded),
+                      tooltip: 'Sync now',
+                      onPressed: _syncNow,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.logout_rounded,
+                          color: scheme.onSurfaceVariant),
+                      tooltip: 'Sign out',
+                      onPressed: _signOut,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 

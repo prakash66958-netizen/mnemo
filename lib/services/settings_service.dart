@@ -98,4 +98,33 @@ class SettingsService {
     await prefs.setString(
         AppConstants.prefLastUpdateCheck, time.toIso8601String());
   }
+
+  // ── Google Drive sync ─────────────────────────────────────────────────────
+
+  Future<String?> getGoogleEmail() async {
+    final prefs = await _ensure();
+    return prefs.getString(AppConstants.prefGoogleEmail);
+  }
+
+  Future<void> setGoogleEmail(String? email) async {
+    final prefs = await _ensure();
+    if (email == null) {
+      await prefs.remove(AppConstants.prefGoogleEmail);
+    } else {
+      await prefs.setString(AppConstants.prefGoogleEmail, email);
+    }
+  }
+
+  Future<DateTime?> getLastDriveSync() async {
+    final prefs = await _ensure();
+    final raw = prefs.getString(AppConstants.prefLastDriveSync);
+    if (raw == null) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setLastDriveSync(DateTime time) async {
+    final prefs = await _ensure();
+    await prefs.setString(
+        AppConstants.prefLastDriveSync, time.toIso8601String());
+  }
 }

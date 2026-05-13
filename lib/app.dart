@@ -18,6 +18,7 @@ import 'services/settings_service.dart';
 import 'services/share_intent_service.dart';
 import 'services/habit_repository.dart';
 import 'services/update_service.dart';
+import 'services/google_drive_service.dart';
 
 /// App-level messenger key so bottom sheets / screens that dismiss themselves
 /// before showing a snackbar can still reach a live Messenger (the root one)
@@ -90,6 +91,37 @@ class _MnemoAppState extends ConsumerState<MnemoApp> {
     // We delay slightly so the first frame is painted before the network call.
     if (done) {
       Future.delayed(const Duration(seconds: 2), _autoCheckForUpdate);
+      // Auto Drive sync — runs silently if the user is signed in.
+      Future.delayed(const Duration(seconds: 4), _autoSync);
+    }
+  }
+
+  /// Silently syncs with Google Drive on launch if the user is signed in.
+  Future<void> _autoSync() async {
+    if (!GoogleDriveService.instance.isSignedIn) return;
+    try {
+      final result = await GoogleDriveService.instance.syncNow();
+      if (result.success && mounted) {
+        // Update the provider so the settings tab reflects the new timestamp.
+        final ctx = _router.routerDelegate.navigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          final container = ProviderScope.containerOf(ctx);
+          container.read(lastDriveSyncProvider.notifier)
+              .set(DateTime.now());
+          if (result.mergedItems > 0) {
+            appMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Drive sync: ${result.mergedItems} new items restored'),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // Sync errors are silently swallowed on auto-sync.
     }
   }
 

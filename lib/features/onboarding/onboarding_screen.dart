@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../services/google_drive_service.dart';
 import '../../services/settings_service.dart';
+import '../shared/providers.dart';
 
 /// Four-step onboarding. The first three pages pitch the app; the last
 /// page asks the user to make an explicit, informed choice about backup
@@ -183,14 +186,42 @@ class _OnboardPage extends StatelessWidget {
 }
 
 /// Final onboarding step: the user picks how they want their data backed up.
-///
-/// Google sign-in is intentionally shown as "Coming soon" — we ship a fully
-/// offline app today, and we'd rather be upfront than silently imply sync we
-/// don't have. "Continue without backup" is the primary, honest path and
-/// also warns the user that memories live only on this device.
-class _BackupChoicePage extends StatelessWidget {
+class _BackupChoicePage extends ConsumerStatefulWidget {
   const _BackupChoicePage({required this.onContinue});
   final VoidCallback onContinue;
+
+  @override
+  ConsumerState<_BackupChoicePage> createState() => _BackupChoicePageState();
+}
+
+class _BackupChoicePageState extends ConsumerState<_BackupChoicePage> {
+  bool _signingIn = false;
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _signingIn = true);
+    try {
+      final account = await GoogleDriveService.instance.signIn();
+      if (account == null || !mounted) {
+        setState(() => _signingIn = false);
+        return;
+      }
+      // Persist the email in the provider.
+      ref.read(googleEmailProvider.notifier).set(account.email);
+
+      // Restore any existing Drive backup before finishing onboarding.
+      await GoogleDriveService.instance.restoreFromDrive();
+      // Full sync to upload local data too.
+      final sync = await GoogleDriveService.instance.syncNow();
+      if (sync.success && mounted) {
+        ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
+      }
+    } catch (_) {
+      // Sign-in failure is non-fatal — fall through to finish onboarding.
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
+    widget.onContinue();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,8 +257,9 @@ class _BackupChoicePage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Mnemo is offline-first. You can export a JSON backup anytime from '
-            'Settings. Cloud sync is on our roadmap.',
+            'Sign in with Google to automatically back up and sync your data '
+            'across devices. Or continue offline — you can always connect '
+            'later from Settings.',
             style: TextStyle(
               fontSize: 14,
               color: scheme.onSurfaceVariant,
@@ -236,26 +268,27 @@ class _BackupChoicePage extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           _BackupOptionCard(
+            icon: Icons.add_to_drive_rounded,
+            iconColor: const Color(0xFF4285F4),
+            title: 'Sign in with Google',
+            body:
+                'Automatic backup to Google Drive. Restore your data on any '
+                'device by signing in with the same account.',
+            trailingBadge: 'Recommended',
+            onTap: _signingIn ? null : _signInWithGoogle,
+            primary: true,
+            loading: _signingIn,
+          ),
+          const SizedBox(height: 12),
+          _BackupOptionCard(
             icon: Icons.cloud_off_rounded,
             iconColor: const Color(0xFF10B981),
             title: 'Continue without backup',
             body:
                 'Your memories stay only on this phone. Fastest, fully private '
                 '— but if you lose this device, your data goes with it.',
-            trailingBadge: 'Recommended',
-            onTap: onContinue,
-            primary: true,
-          ),
-          const SizedBox(height: 12),
-          _BackupOptionCard(
-            icon: Icons.g_mobiledata_rounded,
-            iconColor: const Color(0xFF4285F4),
-            title: 'Sign in with Google',
-            body:
-                'Encrypted cloud sync across your devices. Coming in a future '
-                'update — stay tuned.',
-            trailingBadge: 'Coming soon',
-            onTap: null,
+            trailingBadge: 'Offline',
+            onTap: widget.onContinue,
           ),
           const SizedBox(height: 14),
           Container(
@@ -274,7 +307,7 @@ class _BackupChoicePage extends StatelessWidget {
                   child: Text(
                     'Without backup your data will not be available if the app '
                     'is reinstalled or the device is lost. You can always '
-                    'export a backup from Settings.',
+                    'connect Google Drive from Settings.',
                     style: TextStyle(
                       fontSize: 12,
                       color: scheme.onSurface,
@@ -301,6 +334,7 @@ class _BackupOptionCard extends StatelessWidget {
     required this.trailingBadge,
     required this.onTap,
     this.primary = false,
+    this.loading = false,
   });
 
   final IconData icon;
@@ -310,11 +344,12 @@ class _BackupOptionCard extends StatelessWidget {
   final String trailingBadge;
   final VoidCallback? onTap;
   final bool primary;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final disabled = onTap == null;
+    final disabled = onTap == null && !loading;
     return Opacity(
       opacity: disabled ? 0.7 : 1,
       child: Material(
@@ -336,7 +371,14 @@ class _BackupOptionCard extends StatelessWidget {
                     color: iconColor.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: iconColor, size: 22),
+                  child: loading
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: iconColor),
+                        )
+                      : Icon(icon, color: iconColor, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -53,6 +53,11 @@ dependencies:
   # App version from pubspec at runtime
   package_info_plus: ^8.3.0
 
+  # Google Sign-In and Drive backup
+  google_sign_in: ^6.2.2
+  googleapis: ^13.2.0
+  http: ^1.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

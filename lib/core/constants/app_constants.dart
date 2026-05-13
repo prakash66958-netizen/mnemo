@@ -45,4 +45,10 @@ class AppConstants {
 
   /// ISO-8601 timestamp of the last successful update check.
   static const String prefLastUpdateCheck = 'pref_last_update_check';
+
+  /// Google account email when signed in, null when signed out.
+  static const String prefGoogleEmail = 'pref_google_email';
+
+  /// ISO-8601 timestamp of the last successful Drive sync.
+  static const String prefLastDriveSync = 'pref_last_drive_sync';
 }

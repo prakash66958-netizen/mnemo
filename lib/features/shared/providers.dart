@@ -219,6 +219,58 @@ final habitListProvider = StreamProvider<List<Habit>>(
   (ref) => ref.watch(habitRepoProvider).watchActive(),
 );
 
+// ---------------------------------------------------------------------------
+// Google Drive sync state.
+// ---------------------------------------------------------------------------
+
+/// Holds the signed-in Google email, or null when signed out.
+/// Reads from SharedPreferences on first access so the UI reflects the
+/// persisted state immediately without waiting for a silent sign-in.
+final googleEmailProvider =
+    StateNotifierProvider<GoogleEmailNotifier, String?>((ref) {
+  return GoogleEmailNotifier(ref.watch(settingsServiceProvider));
+});
+
+class GoogleEmailNotifier extends StateNotifier<String?> {
+  GoogleEmailNotifier(this._settings) : super(null) {
+    _load();
+  }
+  final SettingsService _settings;
+
+  Future<void> _load() async {
+    state = await _settings.getGoogleEmail();
+  }
+
+  void set(String? email) {
+    state = email;
+    _settings.setGoogleEmail(email);
+  }
+}
+
+/// Last Drive sync timestamp.
+final lastDriveSyncProvider =
+    StateNotifierProvider<LastDriveSyncNotifier, DateTime?>((ref) {
+  return LastDriveSyncNotifier(ref.watch(settingsServiceProvider));
+});
+
+class LastDriveSyncNotifier extends StateNotifier<DateTime?> {
+  LastDriveSyncNotifier(this._settings) : super(null) {
+    _load();
+  }
+  final SettingsService _settings;
+
+  Future<void> _load() async {
+    final t = await _settings.getLastDriveSync();
+    // Treat epoch (sign-out sentinel) as null.
+    if (t != null && t.millisecondsSinceEpoch > 0) state = t;
+  }
+
+  void set(DateTime? t) {
+    state = (t != null && t.millisecondsSinceEpoch > 0) ? t : null;
+    if (t != null) _settings.setLastDriveSync(t);
+  }
+}
+
 
 /// ---------------------------------------------------------------------------
 /// Advanced inbox filter (date range + category).

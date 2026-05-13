@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'services/category_service.dart';
 import 'services/database_service.dart';
+import 'services/google_drive_service.dart';
 import 'services/notification_service.dart';
 
 /// Entry point. We intentionally keep initialization lean so the app feels
@@ -30,6 +30,12 @@ Future<void> main() async {
     await CategoryService.instance.loadCustom();
   } catch (e) {
     debugPrint('[main] CategoryService.loadCustom() failed: $e');
+  }
+  try {
+    // Restore the previously signed-in Google account silently.
+    await GoogleDriveService.instance.init();
+  } catch (e) {
+    debugPrint('[main] GoogleDriveService.init() failed: $e');
   }
 
   runApp(const ProviderScope(child: MnemoApp()));
