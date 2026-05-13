@@ -34,12 +34,16 @@ android {
         release {
             // TODO: Replace with a release signing config before publishing.
             signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Disable R8 minification. The aggressive shrinker was stripping
+            // reflection-accessed classes in flutter_local_notifications and
+            // the MLKit text recognizer, causing silent failures in release
+            // builds (notifications not firing, reminder cancel() throwing
+            // and aborting Isar write transactions mid-way, toasts not
+            // appearing because their stream subscription crashed silently).
+            // For a side-loaded APK the size penalty (~20 MB) is an
+            // acceptable trade vs. debugging R8 keep rules for every plugin.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
