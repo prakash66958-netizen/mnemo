@@ -84,8 +84,14 @@ class ReminderRepository {
 
   Future<void> delete(Reminder reminder) async {
     await NotificationService.instance.cancel(reminder.notificationId);
+    // Also delete the companion memory (if any) so the reminder disappears
+    // from the Inbox and the Reminder category tile too.
+    final memoryId = reminder.memoryId;
     await _isar.writeTxn(() async {
       await _isar.reminders.delete(reminder.id);
+      if (memoryId != null) {
+        await _isar.memoryItems.delete(memoryId);
+      }
     });
   }
 

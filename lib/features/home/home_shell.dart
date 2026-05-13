@@ -57,6 +57,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   void _showOverlayToast(AppToast toast) {
+    // Use the GoRouter's root navigator's overlay so the toast always lands
+    // on the TOPMOST overlay, even when another screen (reminder edit,
+    // habit editor, etc.) is pushed on top of the HomeShell.
+    final navState = appRouter.routerDelegate.navigatorKey.currentState;
+    final overlay = navState?.overlay;
+    if (overlay == null) return;
+
     late OverlayEntry entry;
     Timer? dismissTimer;
     entry = OverlayEntry(
@@ -74,9 +81,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         },
       ),
     );
-    final overlay = Overlay.of(context, rootOverlay: true);
     overlay.insert(entry);
-    // Auto-dismiss after 3 seconds.
     dismissTimer = Timer(const Duration(seconds: 3), () {
       if (entry.mounted) entry.remove();
     });
