@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "349111968816",
+    "project_id": "mnemo-5d13a",
+    "storage_bucket": "mnemo-5d13a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349111968816:android:9f326f1b01b4ebb401b9f5",
+        "android_client_info": {
+          "package_name": "com.mnemo.mnemo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "349111968816-4q3qrssqsokq2j4rqargdg5crdtbgq0e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mnemo.mnemo",
+            "certificate_hash": "e6de9954300e206efcc7918983e71719026dfb7d"
+          }
+        },
+        {
+          "client_id": "349111968816-fd836995l9dapspdng2j3mq54f0ao7de.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZKeP_RTnIiqbcU1z6GEVjtHVBPg3ztH4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "349111968816-fd836995l9dapspdng2j3mq54f0ao7de.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
