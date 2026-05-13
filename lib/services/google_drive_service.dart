@@ -105,6 +105,11 @@ class GoogleDriveService {
       return const SyncResult(
           uploaded: false, mergedItems: 0, error: 'Not signed in');
     }
+    if (_isSyncing) {
+      return const SyncResult(
+          uploaded: false, mergedItems: 0, error: 'Sync already in progress');
+    }
+    _isSyncing = true;
     try {
       final client = await _authClient();
       if (client == null) {
@@ -136,21 +141,26 @@ class GoogleDriveService {
       return SyncResult(uploaded: true, mergedItems: merged);
     } catch (e) {
       return SyncResult(uploaded: false, mergedItems: 0, error: e.toString());
+    } finally {
+      _isSyncing = false;
     }
   }
 
   // ── Debounced auto-sync ────────────────────────────────────────────────────
 
   Timer? _debounceTimer;
+  bool _isSyncing = false; // prevents re-entrant sync loops
 
   /// Call this after every local write (create, update, delete).
   /// Waits [delay] (default 3 s) for further writes to settle, then runs
   /// a full sync. Rapid consecutive writes are coalesced into one upload.
-  /// Does nothing when the user is not signed in.
+  /// Does nothing when the user is not signed in or a sync is already running.
   void scheduleSync({Duration delay = const Duration(seconds: 3)}) {
-    if (!isSignedIn) return;
+    if (!isSignedIn || _isSyncing) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(delay, () async {
+      if (_isSyncing) return;
+      _isSyncing = true;
       try {
         final result = await syncNow();
         if (result.success) {
@@ -158,6 +168,8 @@ class GoogleDriveService {
         }
       } catch (_) {
         // Silent — auto-sync failures must never surface to the user.
+      } finally {
+        _isSyncing = false;
       }
     });
   }
