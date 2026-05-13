@@ -6,7 +6,6 @@ on:
       - 'v*.*.*'
 
 env:
-  # Opt into Node.js 24 now to silence the Node.js 20 deprecation warning.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -29,32 +28,40 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ── 3. Set up Flutter (latest stable — no pinned version) ────────────
+      # ── 3. Set up Flutter (latest stable) ────────────────────────────────
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # ── 4. Flutter doctor (surfaces SDK / Android toolchain issues) ──────
+      # ── 4. Write local.properties with CI paths ───────────────────────────
+      # local.properties is gitignored (contains local machine paths).
+      # We generate it here so Gradle can find the Flutter SDK and Android SDK.
+      - name: Write local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          echo "flutter.sdk=$(which flutter | xargs dirname | xargs dirname)" >> android/local.properties
+
+      # ── 5. Flutter doctor ────────────────────────────────────────────────
       - name: Flutter doctor
         run: flutter doctor -v
 
-      # ── 5. Install dependencies ──────────────────────────────────────────
+      # ── 6. Install dependencies ──────────────────────────────────────────
       - name: Install dependencies
         run: flutter pub get
 
-      # ── 6. Build release APK ─────────────────────────────────────────────
+      # ── 7. Build release APK ─────────────────────────────────────────────
       - name: Build release APK
         run: flutter build apk --release
 
-      # ── 7. Rename APK to include version ─────────────────────────────────
+      # ── 8. Rename APK to include version ─────────────────────────────────
       - name: Rename APK
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/Mnemo-${{ github.ref_name }}.apk
 
-      # ── 8. Generate changelog from git log since last tag ────────────────
+      # ── 9. Generate changelog from git log since last tag ────────────────
       - name: Generate changelog
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -67,7 +74,7 @@ jobs:
           echo "" >> changelog.md
           echo "$LOG" >> changelog.md
 
-      # ── 9. Create GitHub Release with APK ────────────────────────────────
+      # ── 10. Create GitHub Release with APK ───────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
