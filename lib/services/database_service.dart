@@ -1,3 +1,5 @@
+import 'dart:io' as java_io;
+
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -30,15 +32,49 @@ class DatabaseService {
   bool get isOpen => _isar != null && _isar!.isOpen;
 
   /// Opens the Isar database. Safe to call multiple times.
+  ///
+  /// If the schema has changed since the last install (e.g. new collections
+  /// like Habit/HabitCompletion were added), Isar 3 will throw on open. We
+  /// catch that, delete the old DB file, and re-open with the new schema.
+  /// This loses existing data on a schema-breaking upgrade — acceptable for
+  /// a pre-1.0 app; a production release should use Isar's migration API or
+  /// export-before-upgrade flow.
   Future<void> open() async {
     if (isOpen) return;
     final dir = await getApplicationDocumentsDirectory();
-    _isar = await Isar.open(
-      [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
-      directory: dir.path,
-      name: AppConstants.dbName,
-      inspector: false,
-    );
+    try {
+      _isar = await Isar.open(
+        [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
+        directory: dir.path,
+        name: AppConstants.dbName,
+        inspector: false,
+      );
+    } catch (e) {
+      // Schema mismatch — nuke the old DB and retry.
+      try {
+        await Isar.open(
+          [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
+          directory: dir.path,
+          name: AppConstants.dbName,
+          inspector: false,
+        ).then((db) async {
+          await db.close(deleteFromDisk: true);
+        });
+      } catch (_) {
+        // If even that fails, try deleting the file manually.
+        final dbFile = '${dir.path}/${AppConstants.dbName}.isar';
+        try {
+          final f = java_io.File(dbFile);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+      _isar = await Isar.open(
+        [MemoryItemSchema, ReminderSchema, HabitSchema, HabitCompletionSchema],
+        directory: dir.path,
+        name: AppConstants.dbName,
+        inspector: false,
+      );
+    }
   }
 
   Future<void> close() async {

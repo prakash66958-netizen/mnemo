@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/design_tokens.dart';
@@ -137,6 +138,13 @@ class SettingsTab extends ConsumerWidget {
                     title: 'About',
                     children: [
                       _Row(
+                        icon: Icons.language_rounded,
+                        iconColor: const Color(0xFF4F46E5),
+                        title: 'Visit website',
+                        subtitle: 'getmnemo.web.app',
+                        onTap: () => _openWebsite(context),
+                      ),
+                      _Row(
                         icon: Icons.info_outline_rounded,
                         iconColor: const Color(0xFF64748B),
                         title: AppConstants.appName,
@@ -213,6 +221,19 @@ class SettingsTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Import failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openWebsite(BuildContext context) async {
+    final uri = Uri.parse('https://getmnemo.web.app/');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open browser')),
         );
       }
     }
