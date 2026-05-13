@@ -15,6 +15,7 @@ import '../../core/theme/design_tokens.dart';
 import '../../services/database_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/share_out_service.dart';
+import '../../services/update_service.dart';
 import '../shared/providers.dart';
 
 /// "Me" tab — settings, theme, backup, privacy reassurance.
@@ -145,8 +146,15 @@ class SettingsTab extends ConsumerWidget {
                     title: 'About',
                     children: [
                       _Row(
-                        icon: Icons.language_rounded,
+                        icon: Icons.system_update_rounded,
                         iconColor: const Color(0xFF4F46E5),
+                        title: 'Check for updates',
+                        subtitle: 'Current version: ${AppConstants.appVersion}',
+                        onTap: () => _checkForUpdates(context),
+                      ),
+                      _Row(
+                        icon: Icons.language_rounded,
+                        iconColor: const Color(0xFF0EA5E9),
                         title: 'Visit website',
                         subtitle: 'getmnemo.web.app',
                         onTap: () => _openWebsite(context),
@@ -156,7 +164,7 @@ class SettingsTab extends ConsumerWidget {
                         iconColor: const Color(0xFF64748B),
                         title: AppConstants.appName,
                         subtitle:
-                            '${AppConstants.appTagline} · Version 2.0.0',
+                            '${AppConstants.appTagline} · Version ${AppConstants.appVersion}',
                         onTap: null,
                       ),
                     ],
@@ -230,6 +238,43 @@ class SettingsTab extends ConsumerWidget {
           SnackBar(content: Text('Import failed: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _checkForUpdates(BuildContext context) async {
+    // Show a loading indicator while fetching
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _CheckingDialog(),
+    );
+
+    try {
+      final info = await UpdateService.instance.fetchLatest();
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // close loading dialog
+
+      if (info.isNewer) {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => _UpdateSheet(info: info),
+        );
+      } else {
+        // Already up to date
+        showModalBottomSheet<void>(
+          context: context,
+          builder: (_) => _UpToDateSheet(version: info.version),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // close loading dialog
+      showModalBottomSheet<void>(
+        context: context,
+        builder: (_) => _UpdateErrorSheet(error: e.toString()),
+      );
     }
   }
 
@@ -725,6 +770,429 @@ class _AutoDeleteDialogState extends State<_AutoDeleteDialog> {
           child: const Text('Set'),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Update-check UI
+// ---------------------------------------------------------------------------
+
+/// Small centered dialog shown while the GitHub API call is in flight.
+class _CheckingDialog extends StatelessWidget {
+  const _CheckingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: scheme.primary),
+            const SizedBox(height: 18),
+            const Text(
+              'Checking for updates…',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet shown when a newer version is available.
+class _UpdateSheet extends StatelessWidget {
+  const _UpdateSheet({required this.info});
+  final ReleaseInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dateStr = DateFormat('MMM d, y').format(info.publishedAt);
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 16),
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.system_update_rounded,
+                        color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'v${info.version} available',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Released $dateStr · you have v${AppConstants.appVersion}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            // Changelog
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                children: [
+                  Text(
+                    'WHAT\'S NEW',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Render the markdown-ish release notes as plain text,
+                  // converting ## headings and bullet points nicely.
+                  _ChangelogBody(markdown: info.body),
+                ],
+              ),
+            ),
+            // CTA buttons
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _download(context),
+                        icon: const Icon(Icons.download_rounded),
+                        label: const Text('Download update'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Not now'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _download(BuildContext context) async {
+    // Prefer the direct APK asset; fall back to the release page.
+    final url = info.apkUrl.isNotEmpty ? info.apkUrl : info.htmlUrl;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open download link')),
+        );
+      }
+    }
+  }
+}
+
+/// Renders GitHub-flavoured markdown release notes as styled Flutter widgets.
+/// Handles ## headings, ### headings, - bullet points, and plain paragraphs.
+class _ChangelogBody extends StatelessWidget {
+  const _ChangelogBody({required this.markdown});
+  final String markdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (markdown.trim().isEmpty) {
+      return Text(
+        'No release notes provided.',
+        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
+      );
+    }
+
+    final lines = markdown.split('\n');
+    final widgets = <Widget>[];
+
+    for (final raw in lines) {
+      final line = raw.trimRight();
+      if (line.startsWith('## ')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 4),
+          child: Text(
+            line.substring(3),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+        ));
+      } else if (line.startsWith('### ')) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 2),
+          child: Text(
+            line.substring(4),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: scheme.primary,
+            ),
+          ),
+        ));
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        final text = line.substring(2);
+        // Strip **bold** markers for plain display
+        final clean = text.replaceAll(RegExp(r'\*\*(.+?)\*\*'), r'$1');
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 6, right: 8),
+                child: Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  clean,
+                  style: const TextStyle(fontSize: 14, height: 1.45),
+                ),
+              ),
+            ],
+          ),
+        ));
+      } else if (line.trim().isNotEmpty) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Text(
+            line,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: scheme.onSurface,
+            ),
+          ),
+        ));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+}
+
+/// Bottom sheet shown when the app is already on the latest version.
+class _UpToDateSheet extends StatelessWidget {
+  const _UpToDateSheet({required this.version});
+  final String version;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF10B981), size: 36),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'You\'re up to date',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Mnemo v$version is the latest version.',
+              style: TextStyle(
+                fontSize: 14,
+                color: scheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Great'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet shown when the update check fails (no internet, API error, etc.)
+class _UpdateErrorSheet extends StatelessWidget {
+  const _UpdateErrorSheet({required this.error});
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: scheme.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.wifi_off_rounded,
+                  color: scheme.onErrorContainer, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Could not check for updates',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Make sure you\'re connected to the internet and try again.',
+              style: TextStyle(
+                fontSize: 14,
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      final uri = Uri.parse(
+                          'https://github.com/${AppConstants.githubRepo}/releases/latest');
+                      try {
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
+                      } catch (_) {}
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('Open GitHub'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
