@@ -116,32 +116,21 @@ class SettingsTab extends ConsumerWidget {
                     ],
                   ),
                   _Group(
-                    title: 'Google Drive',
-                    children: [_GoogleDriveRow()],
-                  ),
-                  _Group(
                     title: 'Data',
                     children: [
+                      _GoogleDriveRow(),
                       _Row(
                         icon: Icons.upload_rounded,
                         iconColor: const Color(0xFF10B981),
                         title: 'Export backup',
-                        subtitle: 'Choose where to save your backup file.',
-                        onTap: () => _exportBackup(context),
-                      ),
-                      _Row(
-                        icon: Icons.cloud_upload_rounded,
-                        iconColor: const Color(0xFF0EA5E9),
-                        title: 'Back up to cloud',
-                        subtitle:
-                            'Send the backup to Google Drive, Gmail or any cloud app.',
+                        subtitle: 'Save a local JSON backup file.',
                         onTap: () => _exportBackup(context),
                       ),
                       _Row(
                         icon: Icons.download_rounded,
                         iconColor: const Color(0xFF3B82F6),
                         title: 'Import backup',
-                        subtitle: 'Restore memories from a Mnemo JSON file.',
+                        subtitle: 'Restore from a Mnemo JSON file.',
                         onTap: () => _importBackup(context),
                       ),
                       _Row(
@@ -303,9 +292,10 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
   String _syncLabel(DateTime? last) {
     if (last == null) return 'Never synced';
     final diff = DateTime.now().difference(last);
-    if (diff.inMinutes < 1) return 'Synced just now';
+    if (diff.inSeconds < 60) return 'Synced just now';
     if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
     if (diff.inHours < 24) return 'Synced ${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Synced yesterday';
     return 'Synced ${diff.inDays}d ago';
   }
 
@@ -314,13 +304,12 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
     try {
       final account = await GoogleDriveService.instance.signIn();
       if (account == null || !mounted) {
-        // User cancelled the picker — not an error.
         setState(() => _syncing = false);
-        return;
+        return; // user cancelled
       }
       ref.read(googleEmailProvider.notifier).set(account.email);
 
-      // On first sign-in, restore from Drive then do a full sync.
+      // Restore from Drive first, then upload merged result.
       final restore = await GoogleDriveService.instance.restoreFromDrive();
       final sync = await GoogleDriveService.instance.syncNow();
       if (!mounted) return;
@@ -329,19 +318,16 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
       if (total > 0) {
         showAppToast('Restored $total items from Drive');
       } else {
-        showAppToast('Drive backup linked — syncing automatically');
+        showAppToast('Google Drive backup linked');
       }
     } catch (e) {
       if (!mounted) return;
-      // Show the actual error so the user knows what went wrong.
       final msg = e.toString();
-      final friendly = msg.contains('sign_in_failed')
-          ? 'Sign-in failed. Make sure your account is added as a test user in Firebase Console.'
+      final friendly = msg.contains('sign_in_canceled')
+          ? null
           : msg.contains('network_error')
-              ? 'No internet connection. Try again.'
-              : msg.contains('sign_in_canceled')
-                  ? null // user cancelled — no toast needed
-                  : 'Sign-in error: $msg';
+              ? 'No internet connection'
+              : 'Sign-in failed: $msg';
       if (friendly != null) showAppToast(friendly);
     } finally {
       if (mounted) setState(() => _syncing = false);
@@ -373,7 +359,7 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
         title: const Text('Sign out of Google?'),
         content: const Text(
           'Your local data stays on this device. '
-          'Drive backup will stop until you sign in again.',
+          'Automatic Drive backup will stop until you sign in again.',
         ),
         actions: [
           TextButton(
@@ -381,6 +367,9 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
               child: const Text('Cancel')),
           FilledButton.tonal(
               onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                foregroundColor: Theme.of(ctx).colorScheme.error,
+              ),
               child: const Text('Sign out')),
         ],
       ),
@@ -396,14 +385,14 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
     final email = ref.watch(googleEmailProvider);
     final lastSync = ref.watch(lastDriveSyncProvider);
     final scheme = Theme.of(context).colorScheme;
-    final signedIn = email != null;
 
-    if (!signedIn) {
+    // ── Not signed in ────────────────────────────────────────────────────────
+    if (email == null) {
       return _Row(
         icon: Icons.add_to_drive_rounded,
         iconColor: const Color(0xFF4285F4),
         title: 'Back up to Google Drive',
-        subtitle: 'Sign in to sync your data automatically',
+        subtitle: 'Auto-sync your data across devices',
         onTap: _syncing ? null : _signIn,
         trailing: _syncing
             ? SizedBox(
@@ -416,73 +405,95 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
       );
     }
 
-    // Signed in — show account + sync controls.
-    return Column(
-      children: [
-        // Account row.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
+    // ── Signed in ────────────────────────────────────────────────────────────
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          // Drive icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF4285F4).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.add_to_drive_rounded,
+                color: Color(0xFF4285F4), size: 20),
+          ),
+          const SizedBox(width: 12),
+          // Email + sync status
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  email,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                child: const Icon(Icons.add_to_drive_rounded,
-                    color: Color(0xFF4285F4), size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 2),
+                Row(
                   children: [
-                    Text(
-                      email,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
+                    Icon(
+                      lastSync != null
+                          ? Icons.cloud_done_rounded
+                          : Icons.cloud_off_rounded,
+                      size: 13,
+                      color: lastSync != null
+                          ? const Color(0xFF4285F4)
+                          : scheme.onSurfaceVariant,
                     ),
+                    const SizedBox(width: 4),
                     Text(
                       _syncLabel(lastSync),
                       style: TextStyle(
-                          fontSize: 12, color: scheme.onSurfaceVariant),
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              if (_syncing)
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: scheme.primary),
-                )
-              else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.sync_rounded),
-                      tooltip: 'Sync now',
-                      onPressed: _syncNow,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.logout_rounded,
-                          color: scheme.onSurfaceVariant),
-                      tooltip: 'Sign out',
-                      onPressed: _signOut,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+          // Action buttons
+          if (_syncing)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: scheme.primary),
+              ),
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.sync_rounded),
+                  tooltip: 'Sync now',
+                  color: const Color(0xFF4285F4),
+                  onPressed: _syncNow,
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  icon: Icon(Icons.logout_rounded,
+                      color: scheme.onSurfaceVariant),
+                  tooltip: 'Sign out',
+                  onPressed: _signOut,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
