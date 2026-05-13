@@ -11,7 +11,7 @@ class AppConstants {
   static const String appTagline = 'Your private second brain';
 
   /// Current app version — must match pubspec.yaml.
-  static const String appVersion = '2.3.0';
+  static const String appVersion = '2.4.0';
 
   /// GitHub repo used for release checks.
   static const String githubRepo = 'prakash66958-netizen/mnemo';
