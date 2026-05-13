@@ -310,13 +310,17 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
   }
 
   Future<void> _signIn() async {
-    final account = await GoogleDriveService.instance.signIn();
-    if (account == null || !mounted) return;
-    ref.read(googleEmailProvider.notifier).set(account.email);
-
-    // On first sign-in, restore from Drive then do a full sync.
     setState(() => _syncing = true);
     try {
+      final account = await GoogleDriveService.instance.signIn();
+      if (account == null || !mounted) {
+        // User cancelled the picker — not an error.
+        setState(() => _syncing = false);
+        return;
+      }
+      ref.read(googleEmailProvider.notifier).set(account.email);
+
+      // On first sign-in, restore from Drive then do a full sync.
       final restore = await GoogleDriveService.instance.restoreFromDrive();
       final sync = await GoogleDriveService.instance.syncNow();
       if (!mounted) return;
@@ -327,6 +331,18 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
       } else {
         showAppToast('Drive backup linked — syncing automatically');
       }
+    } catch (e) {
+      if (!mounted) return;
+      // Show the actual error so the user knows what went wrong.
+      final msg = e.toString();
+      final friendly = msg.contains('sign_in_failed')
+          ? 'Sign-in failed. Make sure your account is added as a test user in Firebase Console.'
+          : msg.contains('network_error')
+              ? 'No internet connection. Try again.'
+              : msg.contains('sign_in_canceled')
+                  ? null // user cancelled — no toast needed
+                  : 'Sign-in error: $msg';
+      if (friendly != null) showAppToast(friendly);
     } finally {
       if (mounted) setState(() => _syncing = false);
     }

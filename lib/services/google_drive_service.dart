@@ -76,17 +76,14 @@ class GoogleDriveService {
   }
 
   /// Shows the Google account picker. Returns the signed-in account or null
-  /// if the user cancelled.
+  /// if the user cancelled. Throws a descriptive [Exception] on failure so
+  /// callers can surface the error to the user.
   Future<GoogleSignInAccount?> signIn() async {
-    try {
-      _currentUser = await _googleSignIn.signIn();
-      if (_currentUser != null) {
-        await SettingsService.instance.setGoogleEmail(_currentUser!.email);
-      }
-      return _currentUser;
-    } catch (e) {
-      return null;
+    _currentUser = await _googleSignIn.signIn();
+    if (_currentUser != null) {
+      await SettingsService.instance.setGoogleEmail(_currentUser!.email);
     }
+    return _currentUser;
   }
 
   /// Signs out and clears the stored email.

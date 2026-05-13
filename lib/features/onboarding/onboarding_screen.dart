@@ -203,20 +203,17 @@ class _BackupChoicePageState extends ConsumerState<_BackupChoicePage> {
       final account = await GoogleDriveService.instance.signIn();
       if (account == null || !mounted) {
         setState(() => _signingIn = false);
-        return;
+        return; // user cancelled
       }
-      // Persist the email in the provider.
       ref.read(googleEmailProvider.notifier).set(account.email);
-
-      // Restore any existing Drive backup before finishing onboarding.
       await GoogleDriveService.instance.restoreFromDrive();
-      // Full sync to upload local data too.
       final sync = await GoogleDriveService.instance.syncNow();
       if (sync.success && mounted) {
         ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
       }
-    } catch (_) {
-      // Sign-in failure is non-fatal — fall through to finish onboarding.
+    } catch (e) {
+      // Sign-in failed — continue to app without backup rather than blocking.
+      debugPrint('[onboarding] Google sign-in error: $e');
     } finally {
       if (mounted) setState(() => _signingIn = false);
     }
