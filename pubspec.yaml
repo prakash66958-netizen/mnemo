@@ -50,6 +50,9 @@ dependencies:
   # File picking for backup import
   file_picker: ^8.1.4
 
+  # App version from pubspec at runtime
+  package_info_plus: ^8.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

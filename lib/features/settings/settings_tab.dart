@@ -27,6 +27,11 @@ class SettingsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final mode = ref.watch(themeModeProvider);
+    // Live version from the installed package — auto-updates with pubspec.
+    final version = ref.watch(appVersionProvider).maybeWhen(
+          data: (v) => v,
+          orElse: () => AppConstants.appVersion, // fallback while loading
+        );
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -149,7 +154,7 @@ class SettingsTab extends ConsumerWidget {
                         icon: Icons.system_update_rounded,
                         iconColor: const Color(0xFF4F46E5),
                         title: 'Check for updates',
-                        subtitle: 'Current version: ${AppConstants.appVersion}',
+                        subtitle: 'Current version: $version',
                         onTap: () => _checkForUpdates(context),
                       ),
                       _Row(
@@ -164,7 +169,7 @@ class SettingsTab extends ConsumerWidget {
                         iconColor: const Color(0xFF64748B),
                         title: AppConstants.appName,
                         subtitle:
-                            '${AppConstants.appTagline} · Version ${AppConstants.appVersion}',
+                            '${AppConstants.appTagline} · v$version',
                         onTap: null,
                       ),
                     ],

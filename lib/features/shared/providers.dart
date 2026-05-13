@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/category.dart';
 import '../../models/habit.dart';
@@ -255,6 +256,13 @@ class InboxCheckboxNotifier extends StateNotifier<bool> {
     await _settings.setInboxCheckboxEnabled(enabled);
   }
 }
+
+/// Live app version read from the installed package (matches pubspec.yaml).
+/// Returns e.g. "2.0.0" — updates automatically whenever pubspec version changes.
+final appVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
 
 /// Auto-delete duration for checked-off inbox items (in hours).
 final inboxDeleteAfterHoursProvider =
