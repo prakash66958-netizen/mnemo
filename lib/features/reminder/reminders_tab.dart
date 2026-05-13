@@ -218,78 +218,84 @@ class _TimelineRow extends ConsumerWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: isPast
-                  ? null
-                  : () => context.push('/reminder/edit/${reminder.id}'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatWhen(reminder.remindAt, tone),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                      color: tone == _Tone.overdue
-                          ? const Color(0xFFEF4444)
-                          : scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    reminder.text,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isPast ? scheme.onSurfaceVariant : scheme.onSurface,
-                      decoration: isPast ? TextDecoration.lineThrough : null,
-                      decorationColor:
-                          scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _subtitle(ref, tone),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (!isPast) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        TextButton.icon(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            foregroundColor: scheme.onSurface,
-                            textStyle:
-                                const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: () =>
-                              ReminderRepository.instance.complete(reminder),
-                          icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Done'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: isPast
+                      ? null
+                      : () => context.push('/reminder/edit/${reminder.id}'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatWhen(reminder.remindAt, tone),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: tone == _Tone.overdue
+                              ? const Color(0xFFEF4444)
+                              : scheme.onSurfaceVariant,
                         ),
-                        TextButton.icon(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            foregroundColor: scheme.onSurfaceVariant,
-                          ),
-                          onPressed: () =>
-                              ReminderRepository.instance.delete(reminder),
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          label: const Text('Remove'),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        reminder.text,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isPast ? scheme.onSurfaceVariant : scheme.onSurface,
+                          decoration: isPast ? TextDecoration.lineThrough : null,
+                          decorationColor:
+                              scheme.onSurfaceVariant.withValues(alpha: 0.4),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _subtitle(ref, tone),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isPast) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      FilledButton.tonal(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          textStyle:
+                              const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        onPressed: () async {
+                          await ReminderRepository.instance.complete(reminder);
+                        },
+                        child: const Text('Done'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          textStyle:
+                              const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        onPressed: () async {
+                          await ReminderRepository.instance.delete(reminder);
+                        },
+                        child: const Text('Remove'),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),

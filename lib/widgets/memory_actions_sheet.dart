@@ -101,6 +101,7 @@ void showMemoryActionsSheet(BuildContext context, MemoryItem m) {
             ),
             onTap: () async {
               Navigator.pop(ctx);
+              if (!context.mounted) return;
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (d) => AlertDialog(

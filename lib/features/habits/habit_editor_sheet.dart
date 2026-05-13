@@ -92,10 +92,11 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
         }
       }
       if (mounted) {
+        Navigator.of(context).pop();
+        // Fire toast AFTER popping so the HomeShell's overlay is active.
         showAppToast(
           widget.existing == null ? 'Habit created' : 'Habit updated',
         );
-        Navigator.of(context).pop();
       }
     } finally {
       if (mounted) setState(() => _saving = false);

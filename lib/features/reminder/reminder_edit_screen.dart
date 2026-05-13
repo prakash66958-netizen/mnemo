@@ -110,17 +110,13 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
       final notificationsOk =
           await NotificationService.instance.hasNotificationPermission();
       if (!mounted) return;
-      if (!notificationsOk) {
-        showAppToast(
-          'Reminder saved · Notifications are disabled in system settings',
-        );
-      } else {
-        showAppToast(
-          _existing != null ? 'Reminder updated' : 'Reminder created',
-        );
-      }
+      final toastMsg = !notificationsOk
+          ? 'Reminder saved · Notifications are disabled in system settings'
+          : (_existing != null ? 'Reminder updated' : 'Reminder created');
       if (!mounted) return;
       context.pop();
+      // Fire the toast AFTER popping so the HomeShell's overlay is on top.
+      showAppToast(toastMsg);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
