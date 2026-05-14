@@ -37,93 +37,103 @@ const MemoryItemSchema = CollectionSchema(
       name: r'checklistMode',
       type: IsarType.bool,
     ),
-    r'colorValue': PropertySchema(
+    r'cloudId': PropertySchema(
       id: 4,
+      name: r'cloudId',
+      type: IsarType.string,
+    ),
+    r'colorValue': PropertySchema(
+      id: 5,
       name: r'colorValue',
       type: IsarType.long,
     ),
     r'content': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'content',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
+    r'deletedAt': PropertySchema(
+      id: 8,
+      name: r'deletedAt',
+      type: IsarType.dateTime,
+    ),
     r'doneAt': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'doneAt',
       type: IsarType.dateTime,
     ),
     r'doneInInbox': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'doneInInbox',
       type: IsarType.bool,
     ),
     r'hasPromise': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'hasPromise',
       type: IsarType.bool,
     ),
     r'imagePath': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'imagePath',
       type: IsarType.string,
     ),
     r'linkedIds': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'linkedIds',
       type: IsarType.longList,
     ),
     r'locationName': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'locationName',
       type: IsarType.string,
     ),
     r'locationUrl': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'locationUrl',
       type: IsarType.string,
     ),
     r'pinned': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'pinned',
       type: IsarType.bool,
     ),
     r'rawUrl': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'rawUrl',
       type: IsarType.string,
     ),
     r'reminderPromptHandled': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'reminderPromptHandled',
       type: IsarType.bool,
     ),
     r'searchTokens': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'searchTokens',
       type: IsarType.stringList,
     ),
     r'sourceType': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'sourceType',
       type: IsarType.string,
     ),
     r'tags': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'title': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'title',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 21,
+      id: 23,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -134,6 +144,19 @@ const MemoryItemSchema = CollectionSchema(
   deserializeProp: _memoryItemDeserializeProp,
   idName: r'id',
   indexes: {
+    r'cloudId': IndexSchema(
+      id: -1631172865471370506,
+      name: r'cloudId',
+      unique: true,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'cloudId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'content': IndexSchema(
       id: 6193209363630369380,
       name: r'content',
@@ -255,6 +278,7 @@ int _memoryItemEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.categoryId.length * 3;
   bytesCount += 3 + object.checklistData.length * 3;
+  bytesCount += 3 + object.cloudId.length * 3;
   bytesCount += 3 + object.content.length * 3;
   {
     final value = object.imagePath;
@@ -315,24 +339,26 @@ void _memoryItemSerialize(
   writer.writeString(offsets[1], object.categoryId);
   writer.writeString(offsets[2], object.checklistData);
   writer.writeBool(offsets[3], object.checklistMode);
-  writer.writeLong(offsets[4], object.colorValue);
-  writer.writeString(offsets[5], object.content);
-  writer.writeDateTime(offsets[6], object.createdAt);
-  writer.writeDateTime(offsets[7], object.doneAt);
-  writer.writeBool(offsets[8], object.doneInInbox);
-  writer.writeBool(offsets[9], object.hasPromise);
-  writer.writeString(offsets[10], object.imagePath);
-  writer.writeLongList(offsets[11], object.linkedIds);
-  writer.writeString(offsets[12], object.locationName);
-  writer.writeString(offsets[13], object.locationUrl);
-  writer.writeBool(offsets[14], object.pinned);
-  writer.writeString(offsets[15], object.rawUrl);
-  writer.writeBool(offsets[16], object.reminderPromptHandled);
-  writer.writeStringList(offsets[17], object.searchTokens);
-  writer.writeString(offsets[18], object.sourceType);
-  writer.writeStringList(offsets[19], object.tags);
-  writer.writeString(offsets[20], object.title);
-  writer.writeDateTime(offsets[21], object.updatedAt);
+  writer.writeString(offsets[4], object.cloudId);
+  writer.writeLong(offsets[5], object.colorValue);
+  writer.writeString(offsets[6], object.content);
+  writer.writeDateTime(offsets[7], object.createdAt);
+  writer.writeDateTime(offsets[8], object.deletedAt);
+  writer.writeDateTime(offsets[9], object.doneAt);
+  writer.writeBool(offsets[10], object.doneInInbox);
+  writer.writeBool(offsets[11], object.hasPromise);
+  writer.writeString(offsets[12], object.imagePath);
+  writer.writeLongList(offsets[13], object.linkedIds);
+  writer.writeString(offsets[14], object.locationName);
+  writer.writeString(offsets[15], object.locationUrl);
+  writer.writeBool(offsets[16], object.pinned);
+  writer.writeString(offsets[17], object.rawUrl);
+  writer.writeBool(offsets[18], object.reminderPromptHandled);
+  writer.writeStringList(offsets[19], object.searchTokens);
+  writer.writeString(offsets[20], object.sourceType);
+  writer.writeStringList(offsets[21], object.tags);
+  writer.writeString(offsets[22], object.title);
+  writer.writeDateTime(offsets[23], object.updatedAt);
 }
 
 MemoryItem _memoryItemDeserialize(
@@ -346,25 +372,27 @@ MemoryItem _memoryItemDeserialize(
   object.categoryId = reader.readString(offsets[1]);
   object.checklistData = reader.readString(offsets[2]);
   object.checklistMode = reader.readBool(offsets[3]);
-  object.colorValue = reader.readLongOrNull(offsets[4]);
-  object.content = reader.readString(offsets[5]);
-  object.createdAt = reader.readDateTime(offsets[6]);
-  object.doneAt = reader.readDateTimeOrNull(offsets[7]);
-  object.doneInInbox = reader.readBool(offsets[8]);
-  object.hasPromise = reader.readBool(offsets[9]);
+  object.cloudId = reader.readString(offsets[4]);
+  object.colorValue = reader.readLongOrNull(offsets[5]);
+  object.content = reader.readString(offsets[6]);
+  object.createdAt = reader.readDateTime(offsets[7]);
+  object.deletedAt = reader.readDateTimeOrNull(offsets[8]);
+  object.doneAt = reader.readDateTimeOrNull(offsets[9]);
+  object.doneInInbox = reader.readBool(offsets[10]);
+  object.hasPromise = reader.readBool(offsets[11]);
   object.id = id;
-  object.imagePath = reader.readStringOrNull(offsets[10]);
-  object.linkedIds = reader.readLongList(offsets[11]) ?? [];
-  object.locationName = reader.readStringOrNull(offsets[12]);
-  object.locationUrl = reader.readStringOrNull(offsets[13]);
-  object.pinned = reader.readBool(offsets[14]);
-  object.rawUrl = reader.readStringOrNull(offsets[15]);
-  object.reminderPromptHandled = reader.readBool(offsets[16]);
-  object.searchTokens = reader.readStringList(offsets[17]) ?? [];
-  object.sourceType = reader.readString(offsets[18]);
-  object.tags = reader.readStringList(offsets[19]) ?? [];
-  object.title = reader.readStringOrNull(offsets[20]);
-  object.updatedAt = reader.readDateTime(offsets[21]);
+  object.imagePath = reader.readStringOrNull(offsets[12]);
+  object.linkedIds = reader.readLongList(offsets[13]) ?? [];
+  object.locationName = reader.readStringOrNull(offsets[14]);
+  object.locationUrl = reader.readStringOrNull(offsets[15]);
+  object.pinned = reader.readBool(offsets[16]);
+  object.rawUrl = reader.readStringOrNull(offsets[17]);
+  object.reminderPromptHandled = reader.readBool(offsets[18]);
+  object.searchTokens = reader.readStringList(offsets[19]) ?? [];
+  object.sourceType = reader.readString(offsets[20]);
+  object.tags = reader.readStringList(offsets[21]) ?? [];
+  object.title = reader.readStringOrNull(offsets[22]);
+  object.updatedAt = reader.readDateTime(offsets[23]);
   return object;
 }
 
@@ -384,40 +412,44 @@ P _memoryItemDeserializeProp<P>(
     case 3:
       return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readLongOrNull(offset)) as P;
-    case 5:
       return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readLongOrNull(offset)) as P;
     case 6:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 7:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 8:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 9:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 10:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 11:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readBool(offset)) as P;
     case 12:
       return (reader.readStringOrNull(offset)) as P;
     case 13:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 14:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
       return (reader.readStringOrNull(offset)) as P;
     case 16:
       return (reader.readBool(offset)) as P;
     case 17:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 18:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 19:
       return (reader.readStringList(offset) ?? []) as P;
     case 20:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 21:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 22:
+      return (reader.readStringOrNull(offset)) as P;
+    case 23:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -434,6 +466,61 @@ List<IsarLinkBase<dynamic>> _memoryItemGetLinks(MemoryItem object) {
 
 void _memoryItemAttach(IsarCollection<dynamic> col, Id id, MemoryItem object) {
   object.id = id;
+}
+
+extension MemoryItemByIndex on IsarCollection<MemoryItem> {
+  Future<MemoryItem?> getByCloudId(String cloudId) {
+    return getByIndex(r'cloudId', [cloudId]);
+  }
+
+  MemoryItem? getByCloudIdSync(String cloudId) {
+    return getByIndexSync(r'cloudId', [cloudId]);
+  }
+
+  Future<bool> deleteByCloudId(String cloudId) {
+    return deleteByIndex(r'cloudId', [cloudId]);
+  }
+
+  bool deleteByCloudIdSync(String cloudId) {
+    return deleteByIndexSync(r'cloudId', [cloudId]);
+  }
+
+  Future<List<MemoryItem?>> getAllByCloudId(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'cloudId', values);
+  }
+
+  List<MemoryItem?> getAllByCloudIdSync(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'cloudId', values);
+  }
+
+  Future<int> deleteAllByCloudId(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'cloudId', values);
+  }
+
+  int deleteAllByCloudIdSync(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'cloudId', values);
+  }
+
+  Future<Id> putByCloudId(MemoryItem object) {
+    return putByIndex(r'cloudId', object);
+  }
+
+  Id putByCloudIdSync(MemoryItem object, {bool saveLinks = true}) {
+    return putByIndexSync(r'cloudId', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByCloudId(List<MemoryItem> objects) {
+    return putAllByIndex(r'cloudId', objects);
+  }
+
+  List<Id> putAllByCloudIdSync(List<MemoryItem> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'cloudId', objects, saveLinks: saveLinks);
+  }
 }
 
 extension MemoryItemQueryWhereSort
@@ -557,6 +644,51 @@ extension MemoryItemQueryWhere
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterWhereClause> cloudIdEqualTo(
+      String cloudId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'cloudId',
+        value: [cloudId],
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterWhereClause> cloudIdNotEqualTo(
+      String cloudId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [],
+              upper: [cloudId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [cloudId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [cloudId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [],
+              upper: [cloudId],
+              includeUpper: false,
+            ));
+      }
     });
   }
 
@@ -1491,6 +1623,138 @@ extension MemoryItemQueryFilter
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      cloudIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'cloudId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'cloudId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> cloudIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      cloudIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'cloudId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
       colorValueIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1742,6 +2006,78 @@ extension MemoryItemQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      deletedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      deletedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> deletedAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition>
+      deletedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> deletedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterFilterCondition> deletedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'deletedAt',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -3506,6 +3842,18 @@ extension MemoryItemQuerySortBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByCloudId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByCloudIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'colorValue', Sort.asc);
@@ -3539,6 +3887,18 @@ extension MemoryItemQuerySortBy
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> sortByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
     });
   }
 
@@ -3739,6 +4099,18 @@ extension MemoryItemQuerySortThenBy
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByCloudId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByCloudIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.desc);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'colorValue', Sort.asc);
@@ -3772,6 +4144,18 @@ extension MemoryItemQuerySortThenBy
   QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QAfterSortBy> thenByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
     });
   }
 
@@ -3963,6 +4347,13 @@ extension MemoryItemQueryWhereDistinct
     });
   }
 
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByCloudId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'cloudId', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByColorValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'colorValue');
@@ -3979,6 +4370,12 @@ extension MemoryItemQueryWhereDistinct
   QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
+    });
+  }
+
+  QueryBuilder<MemoryItem, MemoryItem, QDistinct> distinctByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'deletedAt');
     });
   }
 
@@ -4112,6 +4509,12 @@ extension MemoryItemQueryProperty
     });
   }
 
+  QueryBuilder<MemoryItem, String, QQueryOperations> cloudIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'cloudId');
+    });
+  }
+
   QueryBuilder<MemoryItem, int?, QQueryOperations> colorValueProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'colorValue');
@@ -4127,6 +4530,12 @@ extension MemoryItemQueryProperty
   QueryBuilder<MemoryItem, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<MemoryItem, DateTime?, QQueryOperations> deletedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'deletedAt');
     });
   }
 

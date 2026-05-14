@@ -17,20 +17,35 @@ const HabitCompletionSchema = CollectionSchema(
   name: r'HabitCompletion',
   id: -9119310967514767545,
   properties: {
-    r'completedAt': PropertySchema(
+    r'cloudId': PropertySchema(
       id: 0,
+      name: r'cloudId',
+      type: IsarType.string,
+    ),
+    r'completedAt': PropertySchema(
+      id: 1,
       name: r'completedAt',
       type: IsarType.dateTime,
     ),
     r'date': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'date',
       type: IsarType.dateTime,
     ),
+    r'deletedAt': PropertySchema(
+      id: 3,
+      name: r'deletedAt',
+      type: IsarType.dateTime,
+    ),
     r'habitId': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'habitId',
       type: IsarType.long,
+    ),
+    r'updatedAt': PropertySchema(
+      id: 5,
+      name: r'updatedAt',
+      type: IsarType.dateTime,
     )
   },
   estimateSize: _habitCompletionEstimateSize,
@@ -69,6 +84,32 @@ const HabitCompletionSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'updatedAt': IndexSchema(
+      id: -6238191080293565125,
+      name: r'updatedAt',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'updatedAt',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'cloudId': IndexSchema(
+      id: -1631172865471370506,
+      name: r'cloudId',
+      unique: true,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'cloudId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -85,6 +126,7 @@ int _habitCompletionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.cloudId.length * 3;
   return bytesCount;
 }
 
@@ -94,9 +136,12 @@ void _habitCompletionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.completedAt);
-  writer.writeDateTime(offsets[1], object.date);
-  writer.writeLong(offsets[2], object.habitId);
+  writer.writeString(offsets[0], object.cloudId);
+  writer.writeDateTime(offsets[1], object.completedAt);
+  writer.writeDateTime(offsets[2], object.date);
+  writer.writeDateTime(offsets[3], object.deletedAt);
+  writer.writeLong(offsets[4], object.habitId);
+  writer.writeDateTime(offsets[5], object.updatedAt);
 }
 
 HabitCompletion _habitCompletionDeserialize(
@@ -106,10 +151,13 @@ HabitCompletion _habitCompletionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = HabitCompletion();
-  object.completedAt = reader.readDateTime(offsets[0]);
-  object.date = reader.readDateTime(offsets[1]);
-  object.habitId = reader.readLong(offsets[2]);
+  object.cloudId = reader.readString(offsets[0]);
+  object.completedAt = reader.readDateTime(offsets[1]);
+  object.date = reader.readDateTime(offsets[2]);
+  object.deletedAt = reader.readDateTimeOrNull(offsets[3]);
+  object.habitId = reader.readLong(offsets[4]);
   object.id = id;
+  object.updatedAt = reader.readDateTime(offsets[5]);
   return object;
 }
 
@@ -121,11 +169,17 @@ P _habitCompletionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
+      return (reader.readDateTime(offset)) as P;
+    case 3:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 4:
       return (reader.readLong(offset)) as P;
+    case 5:
+      return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -142,6 +196,61 @@ List<IsarLinkBase<dynamic>> _habitCompletionGetLinks(HabitCompletion object) {
 void _habitCompletionAttach(
     IsarCollection<dynamic> col, Id id, HabitCompletion object) {
   object.id = id;
+}
+
+extension HabitCompletionByIndex on IsarCollection<HabitCompletion> {
+  Future<HabitCompletion?> getByCloudId(String cloudId) {
+    return getByIndex(r'cloudId', [cloudId]);
+  }
+
+  HabitCompletion? getByCloudIdSync(String cloudId) {
+    return getByIndexSync(r'cloudId', [cloudId]);
+  }
+
+  Future<bool> deleteByCloudId(String cloudId) {
+    return deleteByIndex(r'cloudId', [cloudId]);
+  }
+
+  bool deleteByCloudIdSync(String cloudId) {
+    return deleteByIndexSync(r'cloudId', [cloudId]);
+  }
+
+  Future<List<HabitCompletion?>> getAllByCloudId(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'cloudId', values);
+  }
+
+  List<HabitCompletion?> getAllByCloudIdSync(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'cloudId', values);
+  }
+
+  Future<int> deleteAllByCloudId(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'cloudId', values);
+  }
+
+  int deleteAllByCloudIdSync(List<String> cloudIdValues) {
+    final values = cloudIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'cloudId', values);
+  }
+
+  Future<Id> putByCloudId(HabitCompletion object) {
+    return putByIndex(r'cloudId', object);
+  }
+
+  Id putByCloudIdSync(HabitCompletion object, {bool saveLinks = true}) {
+    return putByIndexSync(r'cloudId', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByCloudId(List<HabitCompletion> objects) {
+    return putAllByIndex(r'cloudId', objects);
+  }
+
+  List<Id> putAllByCloudIdSync(List<HabitCompletion> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'cloudId', objects, saveLinks: saveLinks);
+  }
 }
 
 extension HabitCompletionQueryWhereSort
@@ -164,6 +273,14 @@ extension HabitCompletionQueryWhereSort
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'date'),
+      );
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhere> anyUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'updatedAt'),
       );
     });
   }
@@ -519,10 +636,284 @@ extension HabitCompletionQueryWhere
       ));
     });
   }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      updatedAtEqualTo(DateTime updatedAt) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'updatedAt',
+        value: [updatedAt],
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      updatedAtNotEqualTo(DateTime updatedAt) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'updatedAt',
+              lower: [],
+              upper: [updatedAt],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'updatedAt',
+              lower: [updatedAt],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'updatedAt',
+              lower: [updatedAt],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'updatedAt',
+              lower: [],
+              upper: [updatedAt],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      updatedAtGreaterThan(
+    DateTime updatedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'updatedAt',
+        lower: [updatedAt],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      updatedAtLessThan(
+    DateTime updatedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'updatedAt',
+        lower: [],
+        upper: [updatedAt],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      updatedAtBetween(
+    DateTime lowerUpdatedAt,
+    DateTime upperUpdatedAt, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'updatedAt',
+        lower: [lowerUpdatedAt],
+        includeLower: includeLower,
+        upper: [upperUpdatedAt],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      cloudIdEqualTo(String cloudId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'cloudId',
+        value: [cloudId],
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterWhereClause>
+      cloudIdNotEqualTo(String cloudId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [],
+              upper: [cloudId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [cloudId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [cloudId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'cloudId',
+              lower: [],
+              upper: [cloudId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension HabitCompletionQueryFilter
     on QueryBuilder<HabitCompletion, HabitCompletion, QFilterCondition> {
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'cloudId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'cloudId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'cloudId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cloudId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      cloudIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'cloudId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
       completedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -627,6 +1018,80 @@ extension HabitCompletionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'date',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      deletedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'deletedAt',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -746,6 +1211,62 @@ extension HabitCompletionQueryFilter
       ));
     });
   }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      updatedAtEqualTo(DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      updatedAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      updatedAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      updatedAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'updatedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension HabitCompletionQueryObject
@@ -756,6 +1277,19 @@ extension HabitCompletionQueryLinks
 
 extension HabitCompletionQuerySortBy
     on QueryBuilder<HabitCompletion, HabitCompletion, QSortBy> {
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy> sortByCloudId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortByCloudIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.desc);
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
       sortByCompletedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -783,6 +1317,20 @@ extension HabitCompletionQuerySortBy
     });
   }
 
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy> sortByHabitId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'habitId', Sort.asc);
@@ -795,10 +1343,37 @@ extension HabitCompletionQuerySortBy
       return query.addSortBy(r'habitId', Sort.desc);
     });
   }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
 }
 
 extension HabitCompletionQuerySortThenBy
     on QueryBuilder<HabitCompletion, HabitCompletion, QSortThenBy> {
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy> thenByCloudId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenByCloudIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cloudId', Sort.desc);
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
       thenByCompletedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -826,6 +1401,20 @@ extension HabitCompletionQuerySortThenBy
     });
   }
 
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy> thenByHabitId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'habitId', Sort.asc);
@@ -850,10 +1439,31 @@ extension HabitCompletionQuerySortThenBy
       return query.addSortBy(r'id', Sort.desc);
     });
   }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
 }
 
 extension HabitCompletionQueryWhereDistinct
     on QueryBuilder<HabitCompletion, HabitCompletion, QDistinct> {
+  QueryBuilder<HabitCompletion, HabitCompletion, QDistinct> distinctByCloudId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'cloudId', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
       distinctByCompletedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -868,9 +1478,23 @@ extension HabitCompletionQueryWhereDistinct
   }
 
   QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
+      distinctByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'deletedAt');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
       distinctByHabitId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'habitId');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
+      distinctByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'updatedAt');
     });
   }
 }
@@ -880,6 +1504,12 @@ extension HabitCompletionQueryProperty
   QueryBuilder<HabitCompletion, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, String, QQueryOperations> cloudIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'cloudId');
     });
   }
 
@@ -896,9 +1526,23 @@ extension HabitCompletionQueryProperty
     });
   }
 
+  QueryBuilder<HabitCompletion, DateTime?, QQueryOperations>
+      deletedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'deletedAt');
+    });
+  }
+
   QueryBuilder<HabitCompletion, int, QQueryOperations> habitIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'habitId');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, DateTime, QQueryOperations>
+      updatedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'updatedAt');
     });
   }
 }

@@ -1,4 +1,7 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "site": "getmnemo",
     "public": "docs",
@@ -24,5 +27,24 @@
         ]
       }
     ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "mnemo-5d13a",
+          "appId": "1:349111968816:android:9f326f1b01b4ebb401b9f5",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "mnemo-5d13a",
+          "configurations": {
+            "android": "1:349111968816:android:9f326f1b01b4ebb401b9f5"
+          }
+        }
+      }
+    }
   }
 }

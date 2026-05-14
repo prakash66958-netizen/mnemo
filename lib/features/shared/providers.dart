@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -8,6 +9,7 @@ import '../../core/category.dart';
 import '../../models/habit.dart';
 import '../../models/memory_item.dart';
 import '../../models/reminder.dart';
+import '../../services/auth_service.dart';
 import '../../services/category_service.dart';
 import '../../services/habit_repository.dart';
 import '../../services/memory_repository.dart';
@@ -220,12 +222,36 @@ final habitListProvider = StreamProvider<List<Habit>>(
 );
 
 // ---------------------------------------------------------------------------
-// Google Drive sync state.
+// Cloud sync state (Firebase Auth + Firestore).
 // ---------------------------------------------------------------------------
 
+/// Streams the currently signed-in Firebase user, or `null` when signed out.
+///
+/// Backed by [AuthService.userStream] which wraps `FirebaseAuth.authStateChanges()`.
+/// Widgets that need to react to sign-in / sign-out should watch this provider
+/// rather than polling [SettingsService].
+final currentUserProvider = StreamProvider<User?>(
+  (ref) => AuthService.instance.userStream,
+);
+
+/// Whether the device participates in Firestore cloud sync.
+///
+/// Derived from [currentUserProvider]: true iff a Firebase user is signed in.
+/// Treats the loading / error states as `false` so consumers see the safe
+/// "sync disabled" default until the first auth event arrives. The
+/// `SettingsService.syncEnabled` preference is still written by [AuthService]
+/// for non-reactive consumers (repository hooks); this provider is the
+/// canonical reactive source for the UI.
+final syncEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(currentUserProvider).valueOrNull != null;
+});
+
 /// Holds the signed-in Google email, or null when signed out.
+///
 /// Reads from SharedPreferences on first access so the UI reflects the
 /// persisted state immediately without waiting for a silent sign-in.
+/// [AuthService.signIn] persists the email here on success, so this provider
+/// stays in sync with [currentUserProvider] without depending on it directly.
 final googleEmailProvider =
     StateNotifierProvider<GoogleEmailNotifier, String?>((ref) {
   return GoogleEmailNotifier(ref.watch(settingsServiceProvider));
@@ -247,27 +273,30 @@ class GoogleEmailNotifier extends StateNotifier<String?> {
   }
 }
 
-/// Last Drive sync timestamp.
-final lastDriveSyncProvider =
-    StateNotifierProvider<LastDriveSyncNotifier, DateTime?>((ref) {
-  return LastDriveSyncNotifier(ref.watch(settingsServiceProvider));
+/// Last successful Firestore sync ack timestamp.
+///
+/// Reads from [SettingsService.getLastCloudSync] on first access and is
+/// updated by the settings UI / sync engine via the notifier's [set] method.
+final lastCloudSyncProvider =
+    StateNotifierProvider<LastCloudSyncNotifier, DateTime?>((ref) {
+  return LastCloudSyncNotifier(ref.watch(settingsServiceProvider));
 });
 
-class LastDriveSyncNotifier extends StateNotifier<DateTime?> {
-  LastDriveSyncNotifier(this._settings) : super(null) {
+class LastCloudSyncNotifier extends StateNotifier<DateTime?> {
+  LastCloudSyncNotifier(this._settings) : super(null) {
     _load();
   }
   final SettingsService _settings;
 
   Future<void> _load() async {
-    final t = await _settings.getLastDriveSync();
+    final t = await _settings.getLastCloudSync();
     // Treat epoch (sign-out sentinel) as null.
     if (t != null && t.millisecondsSinceEpoch > 0) state = t;
   }
 
   void set(DateTime? t) {
     state = (t != null && t.millisecondsSinceEpoch > 0) ? t : null;
-    if (t != null) _settings.setLastDriveSync(t);
+    _settings.setLastCloudSync(t);
   }
 }
 

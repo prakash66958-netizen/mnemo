@@ -1,7 +1,7 @@
 name: mnemo
 description: "Mnemo - Your private second brain. An offline-first universal memory inbox."
 publish_to: 'none'
-version: 2.6.0+9
+version: 2.7.0+10
 
 environment:
   sdk: ^3.11.5
@@ -53,10 +53,14 @@ dependencies:
   # App version from pubspec at runtime
   package_info_plus: ^8.3.0
 
-  # Google Sign-In and Drive backup
+  # Google Sign-In (credential provider for Firebase Auth)
   google_sign_in: ^6.2.2
-  googleapis: ^13.2.0
   http: ^1.2.2
+
+  # Firebase (cloud backup & sync)
+  firebase_core: ^4.8.0
+  firebase_auth: ^6.5.0
+  cloud_firestore: ^6.4.0
 
 dev_dependencies:
   flutter_test:

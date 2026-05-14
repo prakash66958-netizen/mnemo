@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Per-user collection scoping.
+    match /users/{uid}/{collection}/{docId} {
+
+      // Read & list only your own data.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Create/update: must be authed, scoped to your uid, and the document
+      // body's ownerUid must match. Tombstones are allowed because their
+      // body still carries ownerUid.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.cloudId is string
+        && request.resource.data.cloudId == docId
+        && collection in ['memories', 'reminders', 'habits', 'habitCompletions'];
+
+      // Delete: the engine prefers tombstones, but the 30-day sweep does
+      // hard deletes. Allow only the owner.
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Everything else: denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

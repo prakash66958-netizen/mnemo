@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/habit.dart';
 import '../models/habit_completion.dart';
 import 'database_service.dart';
-import 'google_drive_service.dart';
+import 'firestore_sync_service.dart';
 import 'notification_service.dart';
+import 'settings_service.dart';
 
 /// Repository for creating, updating, and querying habits and their daily
-/// completions. All writes also manage the corresponding daily notification.
+/// completions. All writes also manage the corresponding daily notification
+/// and emit Firestore sync hooks when `Sync_Enabled` is true.
 class HabitRepository {
   HabitRepository._();
   static final HabitRepository instance = HabitRepository._();
 
   Isar get _isar => DatabaseService.instance.isar;
+
+  /// Source of v4 UUIDs assigned to `cloudId` on create. Stable across
+  /// instances (singleton repo) so tests can mock the package directly.
+  static const _uuid = Uuid();
+
+  // ---------------------------------------------------------------------------
+  // Habit mutations
+  // ---------------------------------------------------------------------------
 
   Future<Habit> create({
     required String name,
@@ -23,10 +34,12 @@ class HabitRepository {
   }) async {
     final now = DateTime.now();
     final habit = Habit()
+      ..cloudId = _uuid.v4()
       ..name = name
       ..emoji = emoji
       ..colorValue = color.toARGB32()
       ..createdAt = now
+      ..updatedAt = now
       ..remindHour = remindAt?.hour
       ..remindMinute = remindAt?.minute
       ..notificationId = 0;
@@ -57,11 +70,15 @@ class HabitRepository {
         );
       }
     }
-    GoogleDriveService.instance.scheduleSync();
+
+    if (await SettingsService.instance.getSyncEnabled()) {
+      FirestoreSyncService.instance.enqueueUpsert('habits', habit);
+    }
     return habit;
   }
 
   Future<void> update(Habit habit) async {
+    habit.updatedAt = DateTime.now();
     await NotificationService.instance.cancel(habit.notificationId);
     // Also cancel interval slots.
     for (var i = 0; i < 24; i++) {
@@ -90,7 +107,9 @@ class HabitRepository {
         );
       }
     }
-    GoogleDriveService.instance.scheduleSync();
+    if (await SettingsService.instance.getSyncEnabled()) {
+      FirestoreSyncService.instance.enqueueUpsert('habits', habit);
+    }
   }
 
   Future<void> delete(Habit habit) async {
@@ -99,18 +118,35 @@ class HabitRepository {
     for (var i = 0; i < 24; i++) {
       await NotificationService.instance.cancel(habit.notificationId + i);
     }
-    await _isar.writeTxn(() async {
-      await _isar.habitCompletions
+    final syncEnabled = await SettingsService.instance.getSyncEnabled();
+    if (syncEnabled) {
+      // Cascade: tombstone every completion under this habit so other
+      // devices drop them too. The engine soft-deletes locally and hard-
+      // deletes on tombstone ack.
+      final completions = await _isar.habitCompletions
           .filter()
           .habitIdEqualTo(habit.id)
-          .deleteAll();
-      await _isar.habits.delete(habit.id);
-    });
-    GoogleDriveService.instance.scheduleSync();
+          .findAll();
+      for (final c in completions) {
+        FirestoreSyncService.instance
+            .enqueueDelete('habitCompletions', c);
+      }
+      FirestoreSyncService.instance.enqueueDelete('habits', habit);
+    } else {
+      // Sync disabled — hard-delete locally as today.
+      await _isar.writeTxn(() async {
+        await _isar.habitCompletions
+            .filter()
+            .habitIdEqualTo(habit.id)
+            .deleteAll();
+        await _isar.habits.delete(habit.id);
+      });
+    }
   }
 
   Future<void> archive(Habit habit) async {
     habit.archived = !habit.archived;
+    habit.updatedAt = DateTime.now();
     if (habit.archived) {
       await NotificationService.instance.cancel(habit.notificationId);
     }
@@ -126,8 +162,14 @@ class HabitRepository {
         minute: habit.remindMinute ?? 0,
       );
     }
-    GoogleDriveService.instance.scheduleSync();
+    if (await SettingsService.instance.getSyncEnabled()) {
+      FirestoreSyncService.instance.enqueueUpsert('habits', habit);
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // HabitCompletion mutations
+  // ---------------------------------------------------------------------------
 
   Future<void> toggleToday(Habit habit) async {
     final now = DateTime.now();
@@ -138,19 +180,36 @@ class HabitRepository {
         .dateEqualTo(today)
         .findFirst();
 
-    await _isar.writeTxn(() async {
-      if (existing != null) {
-        await _isar.habitCompletions.delete(existing.id);
+    final syncEnabled = await SettingsService.instance.getSyncEnabled();
+
+    if (existing != null) {
+      if (syncEnabled) {
+        FirestoreSyncService.instance
+            .enqueueDelete('habitCompletions', existing);
       } else {
-        final c = HabitCompletion()
-          ..habitId = habit.id
-          ..date = today
-          ..completedAt = now;
-        await _isar.habitCompletions.put(c);
+        await _isar.writeTxn(() async {
+          await _isar.habitCompletions.delete(existing.id);
+        });
       }
-    });
-    GoogleDriveService.instance.scheduleSync();
+    } else {
+      final c = HabitCompletion()
+        ..cloudId = _uuid.v4()
+        ..habitId = habit.id
+        ..date = today
+        ..completedAt = now
+        ..updatedAt = now;
+      await _isar.writeTxn(() async {
+        await _isar.habitCompletions.put(c);
+      });
+      if (syncEnabled) {
+        FirestoreSyncService.instance.enqueueUpsert('habitCompletions', c);
+      }
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // Queries (unchanged — read-only paths don't trigger sync hooks)
+  // ---------------------------------------------------------------------------
 
   Future<bool> isCompletedToday(int habitId) async {
     final now = DateTime.now();

@@ -26,6 +26,15 @@ enum MemorySource {
 class MemoryItem {
   Id id = Isar.autoIncrement;
 
+  /// Stable cross-device document id (v4 UUID).
+  ///
+  /// Mirrors the Firestore document id at `users/{ownerUid}/memories/{cloudId}`.
+  /// Defaults to an empty string for rows that pre-date this column; the
+  /// `IsarMigrationService` backfills a UUID on first launch after upgrade,
+  /// and the repository assigns one at create time for new rows.
+  @Index(unique: true)
+  String cloudId = '';
+
   /// Optional user-provided title, short and punchy.
   String? title;
 
@@ -91,4 +100,9 @@ class MemoryItem {
 
   /// When this item was marked done (used for auto-delete scheduling).
   DateTime? doneAt;
+
+  /// Soft-delete marker for cloud sync. Non-null means the row is awaiting
+  /// a tombstone-ack hard delete from the sync engine. Stays null in the
+  /// signed-out / no-sync code path.
+  DateTime? deletedAt;
 }

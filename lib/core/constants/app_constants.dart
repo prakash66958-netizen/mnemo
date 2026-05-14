@@ -11,7 +11,7 @@ class AppConstants {
   static const String appTagline = 'Your private second brain';
 
   /// Current app version — must match pubspec.yaml.
-  static const String appVersion = '2.6.0';
+  static const String appVersion = '2.7.0';
 
   /// GitHub repo used for release checks.
   static const String githubRepo = 'prakash66958-netizen/mnemo';
@@ -59,8 +59,14 @@ class AppConstants {
   /// Google account email when signed in, null when signed out.
   static const String prefGoogleEmail = 'pref_google_email';
 
-  /// ISO-8601 timestamp of the last successful Drive sync.
-  static const String prefLastDriveSync = 'pref_last_drive_sync';
+  /// Whether cloud sync is currently enabled (mirrors `currentUser != null`).
+  static const String prefSyncEnabled = 'pref_sync_enabled';
+
+  /// Firebase Auth `uid` of the signed-in user, null when signed out.
+  static const String prefOwnerUid = 'pref_owner_uid';
+
+  /// ISO-8601 timestamp of the last successful Firestore cloud sync.
+  static const String prefLastCloudSync = 'pref_last_cloud_sync';
 
   // ── Pomodoro persistence ────────────────────────────────────────────────
   /// PomPhase enum name (work, shortBreak, longBreak).

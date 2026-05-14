@@ -7,6 +7,15 @@ part 'habit.g.dart';
 class Habit {
   Id id = Isar.autoIncrement;
 
+  /// Stable cross-device document id (v4 UUID).
+  ///
+  /// Mirrors the Firestore document id at `users/{ownerUid}/habits/{cloudId}`.
+  /// Defaults to an empty string for rows that pre-date this column; the
+  /// `IsarMigrationService` backfills a UUID on first launch after upgrade,
+  /// and the repository assigns one at create time for new rows.
+  @Index(unique: true)
+  String cloudId = '';
+
   late String name;
 
   /// Optional emoji shown on the card (e.g. "💧").
@@ -16,6 +25,16 @@ class Habit {
   late int colorValue;
 
   late DateTime createdAt;
+
+  /// Last time this row was mutated. Drives the last-write-wins conflict
+  /// resolution policy in `FirestoreSyncService`. Bumped by repository writes
+  /// to `DateTime.now()`. Migration sets it to `createdAt` for legacy rows.
+  late DateTime updatedAt;
+
+  /// Soft-delete marker. Non-null means the row has been deleted locally and
+  /// is awaiting tombstone upload + remote sweep. Inbound tombstones with
+  /// non-null `deletedAt` cause a hard delete on this device.
+  DateTime? deletedAt;
 
   @Index()
   bool archived = false;

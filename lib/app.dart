@@ -17,8 +17,8 @@ import 'services/reminder_repository.dart';
 import 'services/settings_service.dart';
 import 'services/share_intent_service.dart';
 import 'services/habit_repository.dart';
+import 'services/firestore_sync_service.dart';
 import 'services/update_service.dart';
-import 'services/google_drive_service.dart';
 
 /// App-level messenger key so bottom sheets / screens that dismiss themselves
 /// before showing a snackbar can still reach a live Messenger (the root one)
@@ -96,30 +96,14 @@ class _MnemoAppState extends ConsumerState<MnemoApp> {
     }
   }
 
-  /// Silently syncs with Google Drive on launch if the user is signed in.
+  /// Silently runs a one-shot Firestore reconciliation on launch when cloud
+  /// sync is enabled. The FirestoreSyncService listeners attach via
+  /// AuthService.userStream, so this only nudges the queue to flush.
   Future<void> _autoSync() async {
-    if (!GoogleDriveService.instance.isSignedIn) return;
     try {
-      final result = await GoogleDriveService.instance.syncNow();
-      if (result.success && mounted) {
-        // Update the provider so the settings tab reflects the new timestamp.
-        final ctx = _router.routerDelegate.navigatorKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          final container = ProviderScope.containerOf(ctx);
-          container.read(lastDriveSyncProvider.notifier)
-              .set(DateTime.now());
-          if (result.mergedItems > 0) {
-            appMessengerKey.currentState?.showSnackBar(
-              SnackBar(
-                content: Text(
-                    'Drive sync: ${result.mergedItems} new items restored'),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          }
-        }
-      }
+      final enabled = await SettingsService.instance.getSyncEnabled();
+      if (!enabled) return;
+      await FirestoreSyncService.instance.syncNow();
     } catch (_) {
       // Sync errors are silently swallowed on auto-sync.
     }

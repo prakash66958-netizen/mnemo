@@ -78,3 +78,6 @@ app.*.map.json
 # CI build logs (downloaded from GitHub Actions for debugging)
 # ---------------------------------------------------------------------------
 logs_*/
+
+# Kiro spec working files
+.kiro/

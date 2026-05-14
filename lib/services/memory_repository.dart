@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../core/category.dart';
 import '../models/habit.dart';
@@ -12,10 +13,15 @@ import '../models/memory_item.dart';
 import '../models/reminder.dart';
 import 'classifier_service.dart';
 import 'database_service.dart';
-import 'google_drive_service.dart';
+import 'firestore_sync_service.dart';
 import 'notification_service.dart';
 import 'ocr_service.dart';
 import 'promise_detector.dart';
+import 'settings_service.dart';
+
+/// Whether a sync hook fires for an upsert or a delete. Local helper used
+/// by [MemoryRepository._emitSync] to keep the dispatch readable.
+enum _MutationKind { upsert, delete }
 
 /// Central place for creating, updating, deleting and querying memories.
 ///
@@ -29,6 +35,30 @@ class MemoryRepository {
   static final MemoryRepository instance = MemoryRepository._();
 
   Isar get _isar => DatabaseService.instance.isar;
+
+  /// UUID generator for `cloudId` assignment on create. Held as an
+  /// instance field so test suites can substitute it if needed; the
+  /// runtime cost is just the const constructor call.
+  final Uuid _uuid = const Uuid();
+
+  /// Notify the Firestore sync engine after a write transaction commits.
+  ///
+  /// No-op when the user has not opted in to cloud backup
+  /// (`SettingsService.getSyncEnabled() == false`), so the signed-out
+  /// CRUD path is bit-identical to what it was under the Drive backup.
+  /// Called *after* `writeTxn` so a failed Isar write never leaks an
+  /// outbound Firestore write.
+  Future<void> _emitSync(_MutationKind kind, MemoryItem m) async {
+    if (!await SettingsService.instance.getSyncEnabled()) return;
+    switch (kind) {
+      case _MutationKind.upsert:
+        FirestoreSyncService.instance.enqueueUpsert('memories', m);
+        break;
+      case _MutationKind.delete:
+        FirestoreSyncService.instance.enqueueDelete('memories', m);
+        break;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Creation
@@ -58,6 +88,7 @@ class MemoryRepository {
 
     final now = DateTime.now();
     final item = MemoryItem()
+      ..cloudId = _uuid.v4()
       ..title = title
       ..content = content
       ..rawUrl = _extractUrl(content)
@@ -72,7 +103,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
-    GoogleDriveService.instance.scheduleSync();
+    await _emitSync(_MutationKind.upsert, item);
     return item;
   }
 
@@ -123,6 +154,7 @@ class MemoryRepository {
 
     final now = DateTime.now();
     final item = MemoryItem()
+      ..cloudId = _uuid.v4()
       ..title = userTitle
       ..content = content
       ..imagePath = copied.path
@@ -138,7 +170,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
-    GoogleDriveService.instance.scheduleSync();
+    await _emitSync(_MutationKind.upsert, item);
     return item;
   }
 
@@ -156,7 +188,7 @@ class MemoryRepository {
     await _isar.writeTxn(() async {
       await _isar.memoryItems.put(item);
     });
-    GoogleDriveService.instance.scheduleSync();
+    await _emitSync(_MutationKind.upsert, item);
   }
 
   Future<void> togglePinned(MemoryItem item) async {
@@ -170,7 +202,32 @@ class MemoryRepository {
   }
 
   Future<void> delete(MemoryItem item) async {
-    // Also delete the screenshot file if we own it.
+    // When cloud sync is on, hand off to the engine: it soft-deletes the
+    // row (sets `deletedAt`/`updatedAt = now`), uploads a tombstone, and
+    // hard-deletes locally on ack. We deliberately keep the cascade for
+    // reminders local — tombstones for those flow through the reminder
+    // repository as users (or other devices) interact with them.
+    if (await SettingsService.instance.getSyncEnabled()) {
+      // Cancel any local reminder notifications first so the user doesn't
+      // see a notification for a memory that's about to disappear.
+      final rems = await _isar.reminders
+          .filter()
+          .memoryIdEqualTo(item.id)
+          .findAll();
+      for (final r in rems) {
+        try {
+          await NotificationService.instance.cancel(r.notificationId);
+        } catch (_) {}
+      }
+      // The engine handles the local soft-delete + tombstone upload.
+      // Image files and reminder rows are cleaned up when the
+      // tombstone is acknowledged (engine path) or via cascading
+      // tombstones for the reminders themselves.
+      await _emitSync(_MutationKind.delete, item);
+      return;
+    }
+
+    // Signed-out path: hard-delete locally as before.
     final imgPath = item.imagePath;
     // Cascade: remove reminders attached to this memory.
     await _isar.writeTxn(() async {
@@ -193,7 +250,6 @@ class MemoryRepository {
         try { await f.delete(); } catch (_) {}
       }
     }
-    GoogleDriveService.instance.scheduleSync();
   }
 
   Future<void> markReminderPromptHandled(MemoryItem item) async {

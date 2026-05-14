@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -13,8 +14,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/design_tokens.dart';
+import '../../main.dart' show AppBootError;
+import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/google_drive_service.dart';
+import '../../services/firestore_sync_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/settings_service.dart';
 import '../../services/share_out_service.dart';
@@ -119,7 +122,7 @@ class SettingsTab extends ConsumerWidget {
                   _Group(
                     title: 'Data',
                     children: [
-                      _GoogleDriveRow(),
+                      _CloudBackupRow(),
                       _Row(
                         icon: Icons.upload_rounded,
                         iconColor: const Color(0xFF10B981),
@@ -280,97 +283,77 @@ class SettingsTab extends ConsumerWidget {
   }
 }
 
-// ── Google Drive backup row ───────────────────────────────────────────────────
+// ── Cloud backup row ─────────────────────────────────────────────────────────
 
-class _GoogleDriveRow extends ConsumerStatefulWidget {
+/// Settings tile showing the current Firestore cloud-backup state.
+///
+/// Reactively driven by [currentUserProvider], [syncEnabledProvider], and
+/// [lastCloudSyncProvider] so sign-in / sign-out / sync events refresh the
+/// UI without manual polling. Also surfaces [AppBootError.firebase] (a one-time
+/// Firebase boot failure) and [FirestoreSyncService.lastError] (e.g. the
+/// sign-in-required message after a permission-denied write) as inline,
+/// non-blocking banners.
+class _CloudBackupRow extends ConsumerStatefulWidget {
   @override
-  ConsumerState<_GoogleDriveRow> createState() => _GoogleDriveRowState();
+  ConsumerState<_CloudBackupRow> createState() => _CloudBackupRowState();
 }
 
-class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
-  bool _syncing = false;
-  bool _signInFailed = false; // true after a sign-in failure, reset on retry
-  Timer? _ticker; // refreshes the "X ago" label every 30s
+class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
+  static const _kCloudColor = Color(0xFF4285F4);
 
-  @override
-  void initState() {
-    super.initState();
-    // Update the "Synced X ago" label live without waiting for a rebuild.
-    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
-    });
+  bool _busy = false;
+  String? _inlineError; // most recent action-level error (e.g. signIn() failure)
+
+  String _formatTimestamp(DateTime t) =>
+      DateFormat('MMM d, y · h:mm a').format(t.toLocal());
+
+  String _describeError(Object e) {
+    if (e is FirebaseAuthException) return e.message ?? e.code;
+    return e.toString();
   }
 
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  String _syncLabel(DateTime? last) {
-    if (last == null) return 'Never synced';
-    final diff = DateTime.now().difference(last);
-    if (diff.inSeconds < 60) return 'Synced just now';
-    if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return 'Synced ${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Synced yesterday';
-    return 'Synced ${diff.inDays}d ago';
-  }
-
-  Future<void> _signIn() async {
+  Future<void> _enable() async {
     setState(() {
-      _syncing = true;
-      _signInFailed = false;
+      _busy = true;
+      _inlineError = null;
     });
     try {
-      final account = await GoogleDriveService.instance.signIn();
-      if (account == null || !mounted) {
-        setState(() => _syncing = false);
-        return; // user cancelled
-      }
-      ref.read(googleEmailProvider.notifier).set(account.email);
-
-      // Restore from Drive first, then upload merged result.
-      final restore = await GoogleDriveService.instance.restoreFromDrive();
-      final sync = await GoogleDriveService.instance.syncNow();
+      final user = await AuthService.instance.signIn();
       if (!mounted) return;
-      ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
-      final total = restore.mergedItems + sync.mergedItems;
-      if (total > 0) {
-        showAppToast('Restored $total items from Drive');
-      } else {
-        showAppToast('Google Drive backup linked');
+      if (user == null) {
+        // User cancelled the chooser — leave UI silent (Requirement 3.5).
+        return;
       }
+      // Mirror the persisted email + lastCloudSync into the reactive notifiers
+      // so the UI updates without waiting for the next auth event tick.
+      ref.read(googleEmailProvider.notifier).set(user.email);
+      ref.read(lastCloudSyncProvider.notifier).set(DateTime.now());
+      showAppToast('Cloud backup enabled');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _inlineError = e.message ?? 'Sign-in failed (${e.code})');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _signInFailed = true);
-      final msg = e.toString();
-      final friendly = msg.contains('sign_in_canceled')
-          ? null
-          : msg.contains('network_error')
-              ? 'No internet connection'
-              : 'Sign-in failed: $msg';
-      if (friendly != null) showAppToast(friendly);
+      setState(() => _inlineError = 'Sign-in failed: $e');
     } finally {
-      if (mounted) setState(() => _syncing = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _syncNow() async {
-    setState(() => _syncing = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     try {
-      final result = await GoogleDriveService.instance.syncNow();
+      await FirestoreSyncService.instance.syncNow();
       if (!mounted) return;
-      if (result.success) {
-        ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
-        showAppToast(result.mergedItems > 0
-            ? 'Synced — ${result.mergedItems} new items restored'
-            : 'Drive backup up to date');
-      } else {
-        showAppToast('Sync failed: ${result.error}');
-      }
+      showAppToast('Cloud backup up to date');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _inlineError = 'Sync failed: $e');
     } finally {
-      if (mounted) setState(() => _syncing = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -378,81 +361,90 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out of Google?'),
+        title: const Text('Sign out of cloud backup?'),
         content: const Text(
           'Your local data stays on this device. '
-          'Automatic Drive backup will stop until you sign in again.',
+          'Cloud sync will pause until you sign in again.',
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton.tonal(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(
-                foregroundColor: Theme.of(ctx).colorScheme.error,
-              ),
-              child: const Text('Sign out')),
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Sign out'),
+          ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
-    await GoogleDriveService.instance.signOut();
-    ref.read(googleEmailProvider.notifier).set(null);
-    ref.read(lastDriveSyncProvider.notifier).set(null);
+    setState(() => _busy = true);
+    try {
+      await AuthService.instance.signOut();
+      if (!mounted) return;
+      ref.read(googleEmailProvider.notifier).set(null);
+      ref.read(lastCloudSyncProvider.notifier).set(null);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final email = ref.watch(googleEmailProvider);
-    final lastSync = ref.watch(lastDriveSyncProvider);
     final scheme = Theme.of(context).colorScheme;
+    final user = ref.watch(currentUserProvider).valueOrNull;
+    final syncEnabled = ref.watch(syncEnabledProvider);
+    final lastSync = ref.watch(lastCloudSyncProvider);
 
-    // ── Not signed in ────────────────────────────────────────────────────────
-    if (email == null) {
-      return _Row(
-        icon: _signInFailed
-            ? Icons.error_outline_rounded
-            : Icons.add_to_drive_rounded,
-        iconColor: _signInFailed
-            ? scheme.error
-            : const Color(0xFF4285F4),
-        title: 'Back up to Google Drive',
-        subtitle: _signInFailed
-            ? 'Sign-in failed — tap to retry'
-            : 'Auto-sync your data across devices',
-        onTap: _syncing ? null : _signIn,
-        trailing: _syncing
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: scheme.primary),
-              )
-            : _signInFailed
-                ? Icon(Icons.close_rounded, color: scheme.error, size: 22)
-                : null,
-      );
-    }
+    // Banners: combine boot error + engine error + most recent inline error.
+    // All three are read non-reactively for engine/boot — rebuilds triggered
+    // by auth-state changes are sufficient for a non-blocking banner.
+    final bootError = AppBootError.firebase;
+    final engineError = FirestoreSyncService.instance.lastError;
+    final banners = <String>[
+      if (bootError != null)
+        'Cloud sync unavailable: ${_describeError(bootError)}',
+      if (engineError != null) _describeError(engineError),
+      ?_inlineError,
+    ];
 
-    // ── Signed in ────────────────────────────────────────────────────────────
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (banners.isNotEmpty) _CloudBackupBanner(messages: banners),
+        if (syncEnabled && user != null)
+          _buildSignedIn(scheme, user, lastSync)
+        else
+          _buildSignedOut(scheme),
+      ],
+    );
+  }
+
+  Widget _buildSignedIn(ColorScheme scheme, User user, DateTime? lastSync) {
+    final email = user.email ?? '(signed in)';
+    final lastLabel = lastSync != null
+        ? 'Last cloud sync: ${_formatTimestamp(lastSync)}'
+        : 'Last cloud sync: never';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          // Drive icon
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF4285F4).withValues(alpha: 0.15),
+              color: _kCloudColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.add_to_drive_rounded,
-                color: Color(0xFF4285F4), size: 20),
+            child: const Icon(Icons.cloud_done_rounded,
+                color: _kCloudColor, size: 20),
           ),
           const SizedBox(width: 12),
-          // Email + sync status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,32 +459,17 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
                   maxLines: 1,
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Icon(
-                      lastSync != null
-                          ? Icons.cloud_done_rounded
-                          : Icons.cloud_off_rounded,
-                      size: 13,
-                      color: lastSync != null
-                          ? const Color(0xFF4285F4)
-                          : scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _syncLabel(lastSync),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                Text(
+                  lastLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          // Action buttons
-          if (_syncing)
+          if (_busy)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: SizedBox(
@@ -509,7 +486,7 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
                 IconButton(
                   icon: const Icon(Icons.sync_rounded),
                   tooltip: 'Sync now',
-                  color: const Color(0xFF4285F4),
+                  color: _kCloudColor,
                   onPressed: _syncNow,
                   visualDensity: VisualDensity.compact,
                 ),
@@ -522,6 +499,111 @@ class _GoogleDriveRowState extends ConsumerState<_GoogleDriveRow> {
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignedOut(ColorScheme scheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _kCloudColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.cloud_off_rounded,
+                color: _kCloudColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Cloud backup',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Stored only on this device',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (_busy)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: scheme.primary),
+            )
+          else
+            FilledButton.tonal(
+              onPressed: _enable,
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('Enable cloud backup'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Inline error banner shown above the cloud backup tile body. Renders one
+/// short message per error source (boot failure, engine `lastError`, or the
+/// most recent action error). Non-blocking — the rest of the tile remains
+/// interactive.
+class _CloudBackupBanner extends StatelessWidget {
+  const _CloudBackupBanner({required this.messages});
+  final List<String> messages;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      color: scheme.errorContainer.withValues(alpha: 0.6),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < messages.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    size: 16, color: scheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    messages[i],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onErrorContainer,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (i != messages.length - 1) const SizedBox(height: 4),
+          ],
         ],
       ),
     );

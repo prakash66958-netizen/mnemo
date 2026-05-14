@@ -99,8 +99,10 @@ class SettingsService {
         AppConstants.prefLastUpdateCheck, time.toIso8601String());
   }
 
-  // ── Google Drive sync ─────────────────────────────────────────────────────
+  // ── Cloud sync ────────────────────────────────────────────────────────────
 
+  /// Email of the currently signed-in Google account, or null when signed out.
+  /// Used by `AuthService` to surface the account on the settings screen.
   Future<String?> getGoogleEmail() async {
     final prefs = await _ensure();
     return prefs.getString(AppConstants.prefGoogleEmail);
@@ -115,16 +117,50 @@ class SettingsService {
     }
   }
 
-  Future<DateTime?> getLastDriveSync() async {
+  /// Whether the device participates in Firestore cloud sync.
+  /// Mirrors `FirebaseAuth.currentUser != null`. Defaults to false.
+  Future<bool> getSyncEnabled() async {
     final prefs = await _ensure();
-    final raw = prefs.getString(AppConstants.prefLastDriveSync);
+    return prefs.getBool(AppConstants.prefSyncEnabled) ?? false;
+  }
+
+  Future<void> setSyncEnabled(bool enabled) async {
+    final prefs = await _ensure();
+    await prefs.setBool(AppConstants.prefSyncEnabled, enabled);
+  }
+
+  /// Firebase Auth `uid` of the signed-in user, or null when signed out.
+  Future<String?> getOwnerUid() async {
+    final prefs = await _ensure();
+    return prefs.getString(AppConstants.prefOwnerUid);
+  }
+
+  Future<void> setOwnerUid(String? uid) async {
+    final prefs = await _ensure();
+    if (uid == null) {
+      await prefs.remove(AppConstants.prefOwnerUid);
+    } else {
+      await prefs.setString(AppConstants.prefOwnerUid, uid);
+    }
+  }
+
+  /// Timestamp of the last successful Firestore sync ack, or null if never.
+  Future<DateTime?> getLastCloudSync() async {
+    final prefs = await _ensure();
+    final raw = prefs.getString(AppConstants.prefLastCloudSync);
     if (raw == null) return null;
     return DateTime.tryParse(raw);
   }
 
-  Future<void> setLastDriveSync(DateTime time) async {
+  /// Persists the last successful Firestore sync ack timestamp.
+  /// Pass null to clear the value.
+  Future<void> setLastCloudSync(DateTime? time) async {
     final prefs = await _ensure();
-    await prefs.setString(
-        AppConstants.prefLastDriveSync, time.toIso8601String());
+    if (time == null) {
+      await prefs.remove(AppConstants.prefLastCloudSync);
+    } else {
+      await prefs.setString(
+          AppConstants.prefLastCloudSync, time.toIso8601String());
+    }
   }
 }

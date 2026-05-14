@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../services/google_drive_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/settings_service.dart';
 import '../shared/providers.dart';
 
@@ -200,17 +200,14 @@ class _BackupChoicePageState extends ConsumerState<_BackupChoicePage> {
   Future<void> _signInWithGoogle() async {
     setState(() => _signingIn = true);
     try {
-      final account = await GoogleDriveService.instance.signIn();
-      if (account == null || !mounted) {
+      final user = await AuthService.instance.signIn();
+      if (user == null || !mounted) {
         setState(() => _signingIn = false);
         return; // user cancelled
       }
-      ref.read(googleEmailProvider.notifier).set(account.email);
-      await GoogleDriveService.instance.restoreFromDrive();
-      final sync = await GoogleDriveService.instance.syncNow();
-      if (sync.success && mounted) {
-        ref.read(lastDriveSyncProvider.notifier).set(DateTime.now());
-      }
+      ref.read(googleEmailProvider.notifier).set(user.email);
+      // FirestoreSyncService picks up sign-in via its userStream listener and
+      // runs RestoreFlow + listener attach automatically — nothing else to do.
     } catch (e) {
       // Sign-in failed — continue to app without backup rather than blocking.
       debugPrint('[onboarding] Google sign-in error: $e');
