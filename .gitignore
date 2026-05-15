@@ -68,6 +68,7 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+**/android/app/google-services.json
 
 # ---------------------------------------------------------------------------
 # Firebase CLI deploy cache

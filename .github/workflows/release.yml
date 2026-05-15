@@ -52,6 +52,11 @@ jobs:
           # Verify the keystore is a valid file (>1KB).
           ls -la android/app/release.jks
 
+      # ── 5b. Decode google-services.json from secret ──────────────────────
+      - name: Decode google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+
       # ── 6. Write key.properties for Gradle signing ────────────────────────
       - name: Write key.properties
         run: |
