@@ -51,10 +51,16 @@ class PromiseDetector {
     if (text.trim().isEmpty) return PromiseDetection.none();
 
     final hasPromise = _promisePatterns.any((re) => re.hasMatch(text));
-    if (!hasPromise) return PromiseDetection.none();
-
     final time = _extractTime(text);
     final action = _extractAction(text);
+
+    // Trigger the prompt if:
+    // 1. The text contains a promise keyword (original behavior), OR
+    // 2. The text contains a concrete future time reference (e.g. "meeting
+    //    at 3pm", "dentist at 10am") — even without a promise keyword,
+    //    a fixed time strongly suggests the user would benefit from a
+    //    reminder (Req 5.10).
+    if (!hasPromise && time == null) return PromiseDetection.none();
 
     return PromiseDetection(
       hasPromise: true,
@@ -98,23 +104,46 @@ class PromiseDetector {
       if (unit.startsWith('day')) return now.add(Duration(days: n));
     }
 
-    // Explicit clock times: "at 5pm", "at 17:30"
+    // Explicit clock times: "at 5pm", "at 17:30", "3pm", "10:30am"
+    // We require either an "at" prefix, an am/pm suffix, or a colon-separated
+    // time to avoid matching random numbers in the text.
     final clockMatch = RegExp(
-      r'(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?',
+      r'(?:at\s+)(\d{1,2})(?::(\d{2}))?\s*(am|pm)?|(\d{1,2}):(\d{2})\s*(am|pm)?|(\d{1,2})\s*(am|pm)',
     ).firstMatch(lower);
 
     int? hour;
     int minute = 0;
-    if (clockMatch != null &&
-        (lower.contains('am') ||
-            lower.contains('pm') ||
-            lower.contains(':'))) {
-      hour = int.tryParse(clockMatch.group(1)!);
-      minute = int.tryParse(clockMatch.group(2) ?? '0') ?? 0;
-      final ampm = clockMatch.group(3);
-      if (hour != null) {
-        if (ampm == 'pm' && hour < 12) hour = hour + 12;
-        if (ampm == 'am' && hour == 12) hour = 0;
+    if (clockMatch != null) {
+      if (clockMatch.group(1) != null) {
+        // "at 5pm", "at 17:30", "at 5"
+        hour = int.tryParse(clockMatch.group(1)!);
+        minute = int.tryParse(clockMatch.group(2) ?? '0') ?? 0;
+        final ampm = clockMatch.group(3);
+        if (hour != null && ampm != null) {
+          if (ampm == 'pm' && hour < 12) hour = hour + 12;
+          if (ampm == 'am' && hour == 12) hour = 0;
+        }
+        // "at 5" without am/pm — only valid if hour is reasonable (1-23)
+        if (hour != null && clockMatch.group(3) == null && clockMatch.group(2) == null) {
+          if (hour < 1 || hour > 23) hour = null;
+        }
+      } else if (clockMatch.group(4) != null) {
+        // "17:30", "10:30am"
+        hour = int.tryParse(clockMatch.group(4)!);
+        minute = int.tryParse(clockMatch.group(5) ?? '0') ?? 0;
+        final ampm = clockMatch.group(6);
+        if (hour != null && ampm != null) {
+          if (ampm == 'pm' && hour < 12) hour = hour + 12;
+          if (ampm == 'am' && hour == 12) hour = 0;
+        }
+      } else if (clockMatch.group(7) != null) {
+        // "3pm", "10am"
+        hour = int.tryParse(clockMatch.group(7)!);
+        final ampm = clockMatch.group(8);
+        if (hour != null && ampm != null) {
+          if (ampm == 'pm' && hour < 12) hour = hour + 12;
+          if (ampm == 'am' && hour == 12) hour = 0;
+        }
       }
     }
 
