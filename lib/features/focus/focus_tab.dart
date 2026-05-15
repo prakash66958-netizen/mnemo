@@ -1055,6 +1055,7 @@ class _HabitCardState extends State<_HabitCard> {
   Set<int> _completedSlots = <int>{};
   int _streak = 0;
   List<bool> _week = List.filled(7, false);
+  bool _toggling = false;
 
   @override
   void initState() {
@@ -1084,8 +1085,20 @@ class _HabitCardState extends State<_HabitCard> {
   }
 
   Future<void> _toggleSlot(int slotIndex) async {
+    if (_toggling) return;
+    _toggling = true;
+    // Optimistic UI update — flip the slot immediately so the user sees
+    // instant feedback without waiting for the async DB round-trip.
+    setState(() {
+      if (_completedSlots.contains(slotIndex)) {
+        _completedSlots = {..._completedSlots}..remove(slotIndex);
+      } else {
+        _completedSlots = {..._completedSlots, slotIndex};
+      }
+    });
     await HabitRepository.instance.toggleSlot(widget.habit, slotIndex);
     await _load();
+    _toggling = false;
   }
 
   /// True when slot 0 is completed for today. Used for the legacy
