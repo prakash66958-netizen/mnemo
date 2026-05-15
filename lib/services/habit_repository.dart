@@ -182,6 +182,7 @@ class HabitRepository {
         .filter()
         .habitIdEqualTo(habitId)
         .dateEqualTo(today)
+        .deletedAtIsNull()
         .findAll();
     return {for (final c in rows) c.slotIndex ?? 0};
   }
@@ -207,6 +208,7 @@ class HabitRepository {
         .filter()
         .habitIdEqualTo(habit.id)
         .dateEqualTo(today)
+        .deletedAtIsNull()
         .findAll();
     HabitCompletion? existing;
     for (final c in candidates) {
@@ -266,6 +268,7 @@ class HabitRepository {
         .filter()
         .habitIdEqualTo(habitId)
         .dateEqualTo(today)
+        .deletedAtIsNull()
         .findFirst();
     return c != null;
   }
@@ -287,6 +290,7 @@ class HabitRepository {
           .filter()
           .habitIdEqualTo(habitId)
           .dateEqualTo(day)
+          .deletedAtIsNull()
           .findFirst();
       if (c == null) break;
       streak++;
@@ -305,6 +309,7 @@ class HabitRepository {
           .filter()
           .habitIdEqualTo(habitId)
           .dateEqualTo(day)
+          .deletedAtIsNull()
           .findFirst();
       results.add(c != null);
     }
@@ -327,6 +332,7 @@ class HabitRepository {
           .filter()
           .habitIdEqualTo(habitId)
           .dateEqualTo(day)
+          .deletedAtIsNull()
           .findFirst();
       if (c != null) completed++;
     }
@@ -338,6 +344,7 @@ class HabitRepository {
     final completions = await _isar.habitCompletions
         .filter()
         .habitIdEqualTo(habitId)
+        .deletedAtIsNull()
         .sortByDate()
         .findAll();
     if (completions.isEmpty) return 0;
@@ -367,6 +374,7 @@ class HabitRepository {
         .filter()
         .habitIdEqualTo(habitId)
         .dateBetween(start, end)
+        .deletedAtIsNull()
         .findAll();
     final doneSet = {for (final c in completions) c.date};
     final result = <DateTime, bool>{};
@@ -383,6 +391,7 @@ class HabitRepository {
     return _isar.habitCompletions
         .filter()
         .habitIdEqualTo(habitId)
+        .deletedAtIsNull()
         .count();
   }
 
@@ -407,6 +416,7 @@ class HabitRepository {
             .filter()
             .habitIdEqualTo(id)
             .dateEqualTo(day)
+            .deletedAtIsNull()
             .findFirst();
         if (c != null) {
           dailyCounts[i]++;
