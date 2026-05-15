@@ -43,4 +43,11 @@ class HabitCompletion {
   /// Soft-delete marker. Non-null while the row is awaiting tombstone
   /// acknowledgement from Firestore; null for live records.
   DateTime? deletedAt;
+
+  /// Slot index for habits that fire multiple times per day.
+  ///
+  /// Closed range `[0, dailySlotCount - 1]` indexed from the earliest slot
+  /// of the day. Null on legacy rows; readers MUST treat null as
+  /// `slotIndex = 0` for backward compatibility (Requirement 7.9).
+  int? slotIndex;
 }

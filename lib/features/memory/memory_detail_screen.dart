@@ -18,6 +18,7 @@ import '../../services/reminder_repository.dart';
 import '../../services/share_out_service.dart';
 import '../../widgets/mnemo_chip.dart';
 import '../shared/providers.dart';
+import 'link_picker_sheet.dart';
 
 /// Memory detail. Matches screen #5 of the HTML mockup:
 ///  - category pill at the top
@@ -112,55 +113,60 @@ class MemoryDetailScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  SelectableText(
-                    item.content,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                      letterSpacing: -0.2,
+                  // Body content. For checklist-mode memories we render
+                  // the interactive checklist instead of the comma-joined
+                  // summary stored in `item.content` (Req 4.2).
+                  if (!item.checklistMode) ...[
+                    SelectableText(
+                      item.content,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                        letterSpacing: -0.2,
+                      ),
+                      contextMenuBuilder: (ctx, state) =>
+                          AdaptiveTextSelectionToolbar.buttonItems(
+                        anchors: state.contextMenuAnchors,
+                        buttonItems: [
+                          ...state.contextMenuButtonItems,
+                          ContextMenuButtonItem(
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                  ClipboardData(text: item!.content));
+                              if (ctx.mounted) {
+                                ContextMenuController.removeAny();
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Copied all text'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            label: 'Copy all',
+                          ),
+                        ],
+                      ),
                     ),
-                    contextMenuBuilder: (ctx, state) =>
-                        AdaptiveTextSelectionToolbar.buttonItems(
-                      anchors: state.contextMenuAnchors,
-                      buttonItems: [
-                        ...state.contextMenuButtonItems,
-                        ContextMenuButtonItem(
-                          onPressed: () async {
-                            await Clipboard.setData(
-                                ClipboardData(text: item!.content));
-                            if (ctx.mounted) {
-                              ContextMenuController.removeAny();
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Copied all text'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
-                          label: 'Copy all',
-                        ),
-                      ],
-                    ),
-                  ),
-                  // For screenshot/OCR memories, surface a dedicated "Copy
-                  // text" button so the user doesn't have to long-press-select
-                  // a possibly-long OCR result.
-                  if (item.imagePath != null &&
-                      item.content.trim().isNotEmpty &&
-                      item.content.trim() != '[Screenshot]') ...[
-                    const SizedBox(height: 10),
-                    _CopyTextButton(text: item.content),
-                  ],
-                  if (item.rawUrl != null) ...[
-                    const SizedBox(height: 8),
-                    _OpenLinkRow(url: item.rawUrl!),
-                  ],
-                  // Checklist display
-                  if (item.checklistMode && item.checklistData.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    _ChecklistView(item: item),
+                    // For screenshot/OCR memories, surface a dedicated "Copy
+                    // text" button so the user doesn't have to long-press-select
+                    // a possibly-long OCR result.
+                    if (item.imagePath != null &&
+                        item.content.trim().isNotEmpty &&
+                        item.content.trim() != '[Screenshot]') ...[
+                      const SizedBox(height: 10),
+                      _CopyTextButton(text: item.content),
+                    ],
+                    if (item.rawUrl != null) ...[
+                      const SizedBox(height: 8),
+                      _OpenLinkRow(url: item.rawUrl!),
+                    ],
+                  ] else ...[
+                    // Checklist display
+                    if (item.checklistData.isNotEmpty) ...[
+                      _ChecklistView(item: item),
+                    ],
                   ],
                   // Location display
                   if (item.locationName != null &&
@@ -875,17 +881,28 @@ class _LinkedEntriesSectionState extends State<_LinkedEntriesSection> {
   }
 
   Future<void> _addLink(BuildContext context) async {
-    final picked = await showModalBottomSheet<MemoryItem>(
+    final result = await showModalBottomSheet<LinkPickerResult>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _LinkPickerSheet(
+      builder: (_) => LinkPickerSheet(
         excludeId: widget.item.id,
         alreadyLinked: widget.item.linkedIds,
       ),
     );
-    if (picked == null) return;
-    await MemoryRepository.instance.linkEntries(widget.item, picked);
+    if (result == null) return;
+    switch (result) {
+      case LinkPickerExisting(:final item):
+        await MemoryRepository.instance.linkEntries(widget.item, item);
+      case LinkPickerCreateNew(:final title):
+        // Persist a stub Memory so we have an id to link to. The empty
+        // body matches the design contract for inline-created links.
+        final stub = await MemoryRepository.instance.createTextMemory(
+          title: title,
+          content: '',
+        );
+        await MemoryRepository.instance.linkEntries(widget.item, stub);
+    }
     _load();
   }
 
@@ -1037,212 +1054,6 @@ class _LinkedCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Bottom sheet for picking an entry to link to.
-class _LinkPickerSheet extends StatefulWidget {
-  const _LinkPickerSheet({
-    required this.excludeId,
-    required this.alreadyLinked,
-  });
-  final int excludeId;
-  final List<int> alreadyLinked;
-
-  @override
-  State<_LinkPickerSheet> createState() => _LinkPickerSheetState();
-}
-
-class _LinkPickerSheetState extends State<_LinkPickerSheet> {
-  final _ctrl = TextEditingController();
-  List<MemoryItem> _results = const [];
-  bool _searching = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.addListener(_onChanged);
-    // Show recent entries by default
-    _loadRecent();
-  }
-
-  Future<void> _loadRecent() async {
-    setState(() => _searching = true);
-    final all = await MemoryRepository.instance.search('');
-    // search('') returns empty — load from inbox stream instead
-    // We'll just show a hint to type something
-    if (mounted) setState(() => _searching = false);
-  }
-
-  void _onChanged() {
-    final q = _ctrl.text.trim();
-    if (q.isEmpty) {
-      setState(() => _results = const []);
-      return;
-    }
-    setState(() => _searching = true);
-    _runSearch(q);
-  }
-
-  Future<void> _runSearch(String q) async {
-    final raw = await MemoryRepository.instance.search(q);
-    if (!mounted || _ctrl.text.trim() != q) return;
-    final filtered = raw
-        .where((m) =>
-            m.id != widget.excludeId &&
-            !widget.alreadyLinked.contains(m.id))
-        .toList();
-    setState(() {
-      _results = filtered;
-      _searching = false;
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.75,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      builder: (_, controller) => Column(
-        children: [
-          // Handle + header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.add_link_rounded,
-                        color: scheme.primary, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Link to entry',
-                      style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    controller: _ctrl,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Search entries to link…',
-                      prefixIcon: Icon(Icons.search_rounded,
-                          color: scheme.onSurfaceVariant, size: 20),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Results
-          Expanded(
-            child: _ctrl.text.trim().isEmpty
-                ? Center(
-                    child: Text(
-                      'Type to search your memories',
-                      style: TextStyle(
-                          color: scheme.onSurfaceVariant, fontSize: 14),
-                    ),
-                  )
-                : _searching
-                    ? const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : _results.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No results',
-                              style: TextStyle(
-                                  color: scheme.onSurfaceVariant,
-                                  fontSize: 14),
-                            ),
-                          )
-                        : ListView.separated(
-                            controller: controller,
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                            itemCount: _results.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (_, i) {
-                              final m = _results[i];
-                              return Material(
-                                color: scheme.surfaceContainerHigh,
-                                borderRadius: BorderRadius.circular(12),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: () =>
-                                      Navigator.of(context).pop(m),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (m.title != null &&
-                                            m.title!.isNotEmpty)
-                                          Text(
-                                            m.title!,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        Text(
-                                          m.content,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: scheme.onSurfaceVariant,
-                                            height: 1.35,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-          ),
-        ],
       ),
     );
   }

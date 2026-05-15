@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/cloud_backup_ui.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_service.dart';
 import '../shared/providers.dart';
@@ -262,12 +263,13 @@ class _BackupChoicePageState extends ConsumerState<_BackupChoicePage> {
           ),
           const SizedBox(height: 22),
           _BackupOptionCard(
-            icon: Icons.add_to_drive_rounded,
-            iconColor: const Color(0xFF4285F4),
+            icon: kCloudBackupIcon,
+            iconColor: kCloudBackupAccent,
             title: 'Sign in with Google',
             body:
-                'Automatic backup to Google Drive. Restore your data on any '
-                'device by signing in with the same account.',
+                'Get a cloud backup tied to your Google account. You can '
+                'restore on any device by signing in with the same Google '
+                'account.',
             trailingBadge: 'Recommended',
             onTap: _signingIn ? null : _signInWithGoogle,
             primary: true,
@@ -301,7 +303,7 @@ class _BackupChoicePageState extends ConsumerState<_BackupChoicePage> {
                   child: Text(
                     'Without backup your data will not be available if the app '
                     'is reinstalled or the device is lost. You can always '
-                    'connect Google Drive from Settings.',
+                    'enable cloud backup from Settings.',
                     style: TextStyle(
                       fontSize: 12,
                       color: scheme.onSurface,

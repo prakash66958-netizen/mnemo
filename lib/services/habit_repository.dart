@@ -171,14 +171,50 @@ class HabitRepository {
   // HabitCompletion mutations
   // ---------------------------------------------------------------------------
 
-  Future<void> toggleToday(Habit habit) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final existing = await _isar.habitCompletions
+  /// Returns the set of slot indices that have a completion record for today.
+  ///
+  /// "Today" is the device-local calendar date (midnight in the local
+  /// timezone). Legacy rows whose `slotIndex` is null contribute index 0
+  /// per Requirement 7.9.
+  Future<Set<int>> completedSlotsToday(int habitId) async {
+    final today = _midnightLocal(DateTime.now());
+    final rows = await _isar.habitCompletions
+        .filter()
+        .habitIdEqualTo(habitId)
+        .dateEqualTo(today)
+        .findAll();
+    return {for (final c in rows) c.slotIndex ?? 0};
+  }
+
+  /// Toggles the completion for [habit] on the device-local calendar date
+  /// for [now], at slot [slotIndex].
+  ///
+  /// Inserts a new completion row when none exists for that
+  /// `(habit, today, slotIndex)` tuple; otherwise removes the existing row
+  /// (soft-deletes when sync is enabled, hard-deletes when it isn't).
+  ///
+  /// "Existing" matches a row whose `date` equals today AND whose
+  /// `slotIndex` is either equal to [slotIndex] or null when [slotIndex]
+  /// is 0 (Requirement 7.9: treat null as slot 0).
+  Future<void> toggleSlot(
+    Habit habit,
+    int slotIndex, {
+    DateTime? now,
+  }) async {
+    final n = now ?? DateTime.now();
+    final today = _midnightLocal(n);
+    final candidates = await _isar.habitCompletions
         .filter()
         .habitIdEqualTo(habit.id)
         .dateEqualTo(today)
-        .findFirst();
+        .findAll();
+    HabitCompletion? existing;
+    for (final c in candidates) {
+      if ((c.slotIndex ?? 0) == slotIndex) {
+        existing = c;
+        break;
+      }
+    }
 
     final syncEnabled = await SettingsService.instance.getSyncEnabled();
 
@@ -187,8 +223,9 @@ class HabitRepository {
         FirestoreSyncService.instance
             .enqueueDelete('habitCompletions', existing);
       } else {
+        final id = existing.id;
         await _isar.writeTxn(() async {
-          await _isar.habitCompletions.delete(existing.id);
+          await _isar.habitCompletions.delete(id);
         });
       }
     } else {
@@ -196,8 +233,9 @@ class HabitRepository {
         ..cloudId = _uuid.v4()
         ..habitId = habit.id
         ..date = today
-        ..completedAt = now
-        ..updatedAt = now;
+        ..completedAt = n
+        ..updatedAt = n
+        ..slotIndex = slotIndex;
       await _isar.writeTxn(() async {
         await _isar.habitCompletions.put(c);
       });
@@ -206,6 +244,16 @@ class HabitRepository {
       }
     }
   }
+
+  /// Legacy single-slot toggle. Kept as a thin shim around [toggleSlot] so
+  /// any callers that don't pass an explicit slot index continue to work
+  /// against the slot-0 binary contract.
+  Future<void> toggleToday(Habit habit) => toggleSlot(habit, 0);
+
+  /// Returns the local midnight (00:00:00.000) for the calendar date of
+  /// [t] in the device's current timezone. Used as the canonical `date`
+  /// key for HabitCompletion rows.
+  DateTime _midnightLocal(DateTime t) => DateTime(t.year, t.month, t.day);
 
   // ---------------------------------------------------------------------------
   // Queries (unchanged — read-only paths don't trigger sync hooks)

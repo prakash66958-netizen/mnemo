@@ -71,5 +71,15 @@ dev_dependencies:
   build_runner: ^2.4.13
   isar_generator: ^3.1.0+1
 
+  # Property-based testing for the UX-improvements-batch spec.
+  glados: ^1.1.5
+
+# isar_generator pins analyzer < 6.0.0, but newer versions of `test` (a
+# transitive dep of glados) require analyzer >= 8.0.0. The override lets
+# both packages resolve. isar_generator only uses analyzer for its own
+# code generation step, which we still exercise via build_runner.
+dependency_overrides:
+  analyzer: ^8.0.0
+
 flutter:
   uses-material-design: true

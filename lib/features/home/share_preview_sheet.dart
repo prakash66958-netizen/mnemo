@@ -68,15 +68,20 @@ class _SharePreviewSheetState extends State<SharePreviewSheet> {
     final preview = widget.pending.payload.length > 200
         ? '${widget.pending.payload.substring(0, 200)}…'
         : widget.pending.payload;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Center(
               child: Container(
                 width: 40,
@@ -227,6 +232,7 @@ class _SharePreviewSheetState extends State<SharePreviewSheet> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );

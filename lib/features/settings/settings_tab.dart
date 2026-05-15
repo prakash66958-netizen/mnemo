@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/cloud_backup_ui.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../main.dart' show AppBootError;
 import '../../services/auth_service.dart';
@@ -299,13 +300,10 @@ class _CloudBackupRow extends ConsumerStatefulWidget {
 }
 
 class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
-  static const _kCloudColor = Color(0xFF4285F4);
+  static const _kCloudColor = kCloudBackupAccent;
 
   bool _busy = false;
   String? _inlineError; // most recent action-level error (e.g. signIn() failure)
-
-  String _formatTimestamp(DateTime t) =>
-      DateFormat('MMM d, y · h:mm a').format(t.toLocal());
 
   String _describeError(Object e) {
     if (e is FirebaseAuthException) return e.message ?? e.code;
@@ -398,7 +396,6 @@ class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
     final scheme = Theme.of(context).colorScheme;
     final user = ref.watch(currentUserProvider).valueOrNull;
     final syncEnabled = ref.watch(syncEnabledProvider);
-    final lastSync = ref.watch(lastCloudSyncProvider);
 
     // Banners: combine boot error + engine error + most recent inline error.
     // All three are read non-reactively for engine/boot — rebuilds triggered
@@ -417,18 +414,15 @@ class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
       children: [
         if (banners.isNotEmpty) _CloudBackupBanner(messages: banners),
         if (syncEnabled && user != null)
-          _buildSignedIn(scheme, user, lastSync)
+          _buildSignedIn(scheme, user)
         else
           _buildSignedOut(scheme),
       ],
     );
   }
 
-  Widget _buildSignedIn(ColorScheme scheme, User user, DateTime? lastSync) {
+  Widget _buildSignedIn(ColorScheme scheme, User user) {
     final email = user.email ?? '(signed in)';
-    final lastLabel = lastSync != null
-        ? 'Last cloud sync: ${_formatTimestamp(lastSync)}'
-        : 'Last cloud sync: never';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -441,7 +435,7 @@ class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
               color: _kCloudColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.cloud_done_rounded,
+            child: const Icon(kCloudBackupIcon,
                 color: _kCloudColor, size: 20),
           ),
           const SizedBox(width: 12),
@@ -460,7 +454,7 @@ class _CloudBackupRowState extends ConsumerState<_CloudBackupRow> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  lastLabel,
+                  'Synced automatically',
                   style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurfaceVariant,

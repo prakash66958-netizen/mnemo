@@ -42,8 +42,13 @@ const HabitCompletionSchema = CollectionSchema(
       name: r'habitId',
       type: IsarType.long,
     ),
-    r'updatedAt': PropertySchema(
+    r'slotIndex': PropertySchema(
       id: 5,
+      name: r'slotIndex',
+      type: IsarType.long,
+    ),
+    r'updatedAt': PropertySchema(
+      id: 6,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -141,7 +146,8 @@ void _habitCompletionSerialize(
   writer.writeDateTime(offsets[2], object.date);
   writer.writeDateTime(offsets[3], object.deletedAt);
   writer.writeLong(offsets[4], object.habitId);
-  writer.writeDateTime(offsets[5], object.updatedAt);
+  writer.writeLong(offsets[5], object.slotIndex);
+  writer.writeDateTime(offsets[6], object.updatedAt);
 }
 
 HabitCompletion _habitCompletionDeserialize(
@@ -157,7 +163,8 @@ HabitCompletion _habitCompletionDeserialize(
   object.deletedAt = reader.readDateTimeOrNull(offsets[3]);
   object.habitId = reader.readLong(offsets[4]);
   object.id = id;
-  object.updatedAt = reader.readDateTime(offsets[5]);
+  object.slotIndex = reader.readLongOrNull(offsets[5]);
+  object.updatedAt = reader.readDateTime(offsets[6]);
   return object;
 }
 
@@ -179,6 +186,8 @@ P _habitCompletionDeserializeProp<P>(
     case 4:
       return (reader.readLong(offset)) as P;
     case 5:
+      return (reader.readLongOrNull(offset)) as P;
+    case 6:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1213,6 +1222,80 @@ extension HabitCompletionQueryFilter
   }
 
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'slotIndex',
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'slotIndex',
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'slotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'slotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'slotIndex',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
+      slotIndexBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'slotIndex',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterFilterCondition>
       updatedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1345,6 +1428,20 @@ extension HabitCompletionQuerySortBy
   }
 
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortBySlotIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'slotIndex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      sortBySlotIndexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'slotIndex', Sort.desc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
       sortByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
@@ -1441,6 +1538,20 @@ extension HabitCompletionQuerySortThenBy
   }
 
   QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenBySlotIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'slotIndex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
+      thenBySlotIndexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'slotIndex', Sort.desc);
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QAfterSortBy>
       thenByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
@@ -1492,6 +1603,13 @@ extension HabitCompletionQueryWhereDistinct
   }
 
   QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
+      distinctBySlotIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'slotIndex');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, HabitCompletion, QDistinct>
       distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
@@ -1536,6 +1654,12 @@ extension HabitCompletionQueryProperty
   QueryBuilder<HabitCompletion, int, QQueryOperations> habitIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'habitId');
+    });
+  }
+
+  QueryBuilder<HabitCompletion, int?, QQueryOperations> slotIndexProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'slotIndex');
     });
   }
 

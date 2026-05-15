@@ -15,6 +15,7 @@ import '../../services/classifier_service.dart';
 import '../../services/memory_repository.dart';
 import '../../services/promise_detector.dart';
 import '../shared/providers.dart';
+import '../shared/reminder_prompt.dart';
 
 /// Quick-capture bottom sheet. Matches screen #2 of the HTML mockup:
 /// a rounded sheet with a grip, title + close, large textbox, "Suggested"
@@ -102,22 +103,20 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         forcedCategoryId: category.isBuiltin ? null : category.id,
       );
       if (!mounted) return;
+      // Persist FIRST (Req 5.8), then offer the reminder prompt regardless
+      // of category. The shared helper is the single source of truth for
+      // when a reminder follow-up is offered.
+      final outcome = await maybePromptForReminder(
+        context,
+        memory: mem,
+        contentForDetection: text,
+      );
+      if (!mounted) return;
+      // Close this sheet now that the prompt (if any) has resolved. On
+      // `accepted`, the helper has already pushed `/reminder/new`; popping
+      // the sheet here just removes the quick-add layer underneath.
       Navigator.of(context).pop();
-      // Offer a reminder follow-up when the chosen category is a promise or a
-      // reminder — those are the only two that mean "remind me".
-      final builtin = category.builtin;
-      if (builtin == MemoryCategory.promise ||
-          builtin == MemoryCategory.reminder) {
-        final detection = PromiseDetector.instance.detect(text);
-        // Route *after* the sheet has popped so we land on top of the shell.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.push('/reminder/new', extra: {
-            'memoryId': mem.id,
-            'text': detection.action ?? text,
-            'time': detection.suggestedTime,
-          });
-        });
-      } else {
+      if (outcome == ReminderPromptOutcome.declined) {
         // Use the app-level toast stream so the snackbar shows on the
         // HomeShell's ScaffoldMessenger (which persists) and auto-dismisses.
         showAppToast(

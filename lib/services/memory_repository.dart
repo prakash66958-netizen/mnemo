@@ -407,6 +407,25 @@ class MemoryRepository {
   Future<MemoryItem?> getById(int id) =>
       _isar.memoryItems.get(id);
 
+  /// Returns non-archived memories sorted by [MemoryItem.updatedAt]
+  /// descending, paged via [offset] and [limit].
+  ///
+  /// Used by the link-picker sheet to show "recents" when the search
+  /// query is empty; pagination keeps memory pressure bounded for users
+  /// with thousands of entries.
+  Future<List<MemoryItem>> fetchRecent({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    return _isar.memoryItems
+        .filter()
+        .archivedEqualTo(false)
+        .sortByUpdatedAtDesc()
+        .offset(offset)
+        .limit(limit)
+        .findAll();
+  }
+
   // ---------------------------------------------------------------------------
   // Backup / restore (JSON-based; documented in settings)
   //

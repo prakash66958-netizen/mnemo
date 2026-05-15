@@ -3,6 +3,26 @@ import 'package:intl/intl.dart';
 
 import '../../models/habit.dart';
 import '../../services/habit_repository.dart';
+import '../../services/habit_slot_calculator.dart';
+
+/// Returns the per-day completion percentage for [h] given the set of
+/// [completedSlots] recorded for that day.
+///
+/// Formally: `(100 * |S ∩ [0, dailySlotCount(h))|) ~/ dailySlotCount(h)`
+/// — i.e. completions whose `slotIndex` falls outside the currently
+/// rendered range are excluded from the numerator (Requirement 7.14),
+/// and the denominator is the habit's current daily slot count.
+///
+/// When every renderable slot is completed, the result is exactly `100`
+/// (Requirement 7.11). Returns `0` if the habit has no slots, which
+/// `dailySlotCount` never produces in practice but is defended here for
+/// callers that pass synthetic values.
+int dailyPercentage(Habit h, Set<int> completedSlots) {
+  final total = dailySlotCount(h);
+  if (total <= 0) return 0;
+  final n = completedSlots.where((i) => i >= 0 && i < total).length;
+  return (100 * n) ~/ total;
+}
 
 /// Full-screen stats view for a single habit.
 /// Shows: current streak, longest streak, completion rates (7/30/90 days),
@@ -27,6 +47,7 @@ class _HabitStatsScreenState extends State<HabitStatsScreen> {
   double _rate90 = 0;
   int _totalCompletions = 0;
   Map<DateTime, bool> _monthMap = {};
+  Set<int> _todaySlots = const {};
   bool _loading = true;
 
   @override
@@ -49,6 +70,7 @@ class _HabitStatsScreenState extends State<HabitStatsScreen> {
       repo.completionRateForDays(id, 90),
       repo.totalCompletions(id),
       repo.monthCompletions(id, _month.year, _month.month),
+      repo.completedSlotsToday(id),
     ]);
     if (!mounted) return;
     setState(() {
@@ -59,6 +81,7 @@ class _HabitStatsScreenState extends State<HabitStatsScreen> {
       _rate90 = results[4] as double;
       _totalCompletions = results[5] as int;
       _monthMap = results[6] as Map<DateTime, bool>;
+      _todaySlots = results[7] as Set<int>;
       _loading = false;
     });
   }
@@ -163,6 +186,7 @@ class _HabitStatsScreenState extends State<HabitStatsScreen> {
                   month: _month,
                   completions: _monthMap,
                   color: color,
+                  todayPercentage: dailyPercentage(h, _todaySlots),
                   onPrev: () => _changeMonth(-1),
                   onNext: _month.isBefore(
                           DateTime(DateTime.now().year, DateTime.now().month))
@@ -327,12 +351,19 @@ class _MonthHeatmap extends StatelessWidget {
     required this.month,
     required this.completions,
     required this.color,
+    required this.todayPercentage,
     required this.onPrev,
     this.onNext,
   });
   final DateTime month;
   final Map<DateTime, bool> completions;
   final Color color;
+
+  /// Today's per-day completion percentage in `[0, 100]`, computed via
+  /// `dailyPercentage` over the habit's currently rendered slot range.
+  /// Displayed alongside the month title so users can read today's
+  /// progress at a glance (Requirement 7.11).
+  final int todayPercentage;
   final VoidCallback onPrev;
   final VoidCallback? onNext;
 
@@ -375,6 +406,29 @@ class _MonthHeatmap extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
               ),
             ],
+          ),
+          // Today's per-day completion percentage caption (Req 7.11).
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.today_rounded,
+                  size: 13,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Today: $todayPercentage%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           // Day-of-week labels.

@@ -289,6 +289,10 @@ Map<String, dynamic> completionToMap(
     'habitCloudId': habitCloudId,
     'date': Timestamp.fromDate(c.date),
     'completedAt': Timestamp.fromDate(c.completedAt),
+    // Only emit `slotIndex` when non-null so legacy single-slot habits and
+    // documents written by older clients keep their existing shape
+    // (Requirements 7.8, 7.9).
+    if (c.slotIndex != null) 'slotIndex': c.slotIndex,
   };
 }
 
@@ -308,5 +312,8 @@ HabitCompletion mapToCompletion(
     ..date = _toDate(map['date'])
     ..completedAt = _toDate(map['completedAt'])
     ..updatedAt = _toDate(map['updatedAt'])
-    ..deletedAt = _toDateOrNull(map['deletedAt']);
+    ..deletedAt = _toDateOrNull(map['deletedAt'])
+    // Inbound legacy/single-slot documents omit `slotIndex`; readers treat
+    // null as slot 0 (Requirement 7.9).
+    ..slotIndex = (map['slotIndex'] as int?);
 }

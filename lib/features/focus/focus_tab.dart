@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/habit.dart';
 import '../../services/habit_repository.dart';
+import '../../services/habit_slot_calculator.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/segmented_tabs.dart';
@@ -1051,7 +1052,7 @@ class _HabitCard extends StatefulWidget {
 }
 
 class _HabitCardState extends State<_HabitCard> {
-  bool _done = false;
+  Set<int> _completedSlots = <int>{};
   int _streak = 0;
   List<bool> _week = List.filled(7, false);
 
@@ -1068,24 +1069,29 @@ class _HabitCardState extends State<_HabitCard> {
   }
 
   Future<void> _load() async {
-    final done =
-        await HabitRepository.instance.isCompletedToday(widget.habit.id);
+    final slots =
+        await HabitRepository.instance.completedSlotsToday(widget.habit.id);
     final streak =
         await HabitRepository.instance.currentStreak(widget.habit.id);
     final week =
         await HabitRepository.instance.last7Days(widget.habit.id);
     if (!mounted) return;
     setState(() {
-      _done = done;
+      _completedSlots = slots;
       _streak = streak;
       _week = week;
     });
   }
 
-  Future<void> _toggle() async {
-    await HabitRepository.instance.toggleToday(widget.habit);
-    _load();
+  Future<void> _toggleSlot(int slotIndex) async {
+    await HabitRepository.instance.toggleSlot(widget.habit, slotIndex);
+    await _load();
   }
+
+  /// True when slot 0 is completed for today. Used for the legacy
+  /// binary-checkbox path (single-slot habits) and for surfaces (week
+  /// dots, goal progress) that retain the day-level "did anything" view.
+  bool get _doneToday => _completedSlots.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -1095,7 +1101,18 @@ class _HabitCardState extends State<_HabitCard> {
     final bg = Color.alphaBlend(
         color.withValues(alpha: 0.10), scheme.surfaceContainerHigh);
     final hasGoal = h.targetValue != null && h.targetValue! > 0;
-    final goalProgress = hasGoal ? (_done ? 1.0 : 0.0) : null;
+    // Goal progress mirrors the legacy binary view: any completion today
+    // counts as goal-met. This keeps single-slot habits visually unchanged
+    // and keeps streak / week-dot semantics intact for multi-slot habits.
+    final goalProgress = hasGoal ? (_doneToday ? 1.0 : 0.0) : null;
+    final slotCount = dailySlotCount(h);
+    // Req 7.14: when an edit shrinks today's slot count below an existing
+    // recorded slotIndex, render only `[0, slotCount - 1]`. The disk row
+    // is left intact by HabitRepository.toggleSlot (we never touch it).
+    final visibleSlots = <int>{
+      for (final s in _completedSlots)
+        if (s < slotCount) s,
+    };
 
     return Material(
       color: bg,
@@ -1110,23 +1127,46 @@ class _HabitCardState extends State<_HabitCard> {
             children: [
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: _toggle,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                  if (slotCount == 1)
+                    GestureDetector(
+                      onTap: () => _toggleSlot(0),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _doneToday ? color : Colors.transparent,
+                          border: Border.all(color: color, width: 2.5),
+                        ),
+                        child: _doneToday
+                            ? const Icon(Icons.check_rounded,
+                                size: 20, color: Colors.white)
+                            : null,
+                      ),
+                    )
+                  else
+                    Container(
                       width: 36,
                       height: 36,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _done ? color : Colors.transparent,
-                        border: Border.all(color: color, width: 2.5),
+                        color: color.withValues(alpha: 0.12),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
                       ),
-                      child: _done
-                          ? const Icon(Icons.check_rounded,
-                              size: 20, color: Colors.white)
-                          : null,
+                      child: Text(
+                        '${visibleSlots.length}/$slotCount',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
                     ),
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1180,6 +1220,23 @@ class _HabitCardState extends State<_HabitCard> {
                   ),
                 ],
               ),
+              if (slotCount > 1) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < slotCount; i++)
+                      _SlotCheckbox(
+                        label:
+                            formatSlotLabel(slotStartTime(h, i)),
+                        checked: visibleSlots.contains(i),
+                        color: color,
+                        onTap: () => _toggleSlot(i),
+                      ),
+                  ],
+                ),
+              ],
               if (hasGoal) ...[
                 const SizedBox(height: 10),
                 Row(
@@ -1199,7 +1256,7 @@ class _HabitCardState extends State<_HabitCard> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _done
+                      _doneToday
                           ? '${_fmtTarget(h.targetValue!)} / ${_fmtTarget(h.targetValue!)} ${h.targetUnit ?? ''}'
                               .trim()
                           : '0 / ${_fmtTarget(h.targetValue!)} ${h.targetUnit ?? ''}'
@@ -1207,7 +1264,9 @@ class _HabitCardState extends State<_HabitCard> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: _done ? color : scheme.onSurfaceVariant,
+                        color: _doneToday
+                            ? color
+                            : scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -1233,11 +1292,87 @@ class _HabitCardState extends State<_HabitCard> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _HabitDetailSheet(habit: widget.habit),
-    );
+    ).then((_) {
+      // Req 7.13: when the user edits the habit (slot count, time range,
+      // interval, etc.), the editor sheet closes and we re-load so the
+      // card re-renders against the new schedule. We always reload —
+      // even on plain "Stats" or "Delete" closes — because reloading is
+      // cheap and keeps the card's day/streak/week state fresh.
+      if (mounted) _load();
+    });
   }
 
   String _fmtTarget(double v) =>
       v % 1 == 0 ? v.toInt().toString() : v.toString();
+}
+
+// ── Per-slot checkbox chip ────────────────────────────────────────────────────
+//
+// Used by [_HabitCard] for habits with `dailySlotCount > 1`. Renders the
+// slot's start time as a tappable pill that toggles between unchecked
+// (outlined) and checked (filled with a tick). Visually consistent with the
+// legacy binary checkbox so single-slot habits and multi-slot habits read
+// as variants of the same affordance.
+
+class _SlotCheckbox extends StatelessWidget {
+  const _SlotCheckbox({
+    required this.label,
+    required this.checked,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool checked;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: checked ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: checked ? color : color.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Icon(
+                checked
+                    ? Icons.check_rounded
+                    : Icons.access_time_rounded,
+                key: ValueKey<bool>(checked),
+                size: 14,
+                color: checked ? Colors.white : color,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: checked ? Colors.white : scheme.onSurface,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ── Habit Detail Sheet ────────────────────────────────────────────────────────

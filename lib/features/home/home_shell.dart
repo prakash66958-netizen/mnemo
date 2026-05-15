@@ -101,24 +101,27 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Widget build(BuildContext context) {
     final tab = ref.watch(shellTabProvider);
     final scheme = Theme.of(context).colorScheme;
+    const inboxTabIndex = 0;
 
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: tab, children: _tabs),
-      floatingActionButton: SizedBox(
-        width: 58,
-        height: 58,
-        child: FloatingActionButton(
-          onPressed: () => _openQuickAdd(context),
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Icon(Icons.add_rounded, size: 28),
-        ),
-      ),
+      floatingActionButton: tab == inboxTabIndex
+          ? SizedBox(
+              width: 58,
+              height: 58,
+              child: FloatingActionButton(
+                onPressed: () => _openQuickAdd(context),
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.add_rounded, size: 28),
+              ),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: MnemoNavBar(
         currentIndex: tab,
