@@ -1146,25 +1146,34 @@ class _HabitCardState extends State<_HabitCard> {
                       ),
                     )
                   else
-                    Container(
+                    SizedBox(
                       width: 36,
                       height: 36,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color.withValues(alpha: 0.12),
-                        border: Border.all(
-                          color: color.withValues(alpha: 0.5),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        '${visibleSlots.length}/$slotCount',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: color,
-                        ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 34,
+                            height: 34,
+                            child: CircularProgressIndicator(
+                              value: slotCount > 0
+                                  ? visibleSlots.length / slotCount
+                                  : 0,
+                              strokeWidth: 3,
+                              backgroundColor: color.withValues(alpha: 0.15),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(color),
+                            ),
+                          ),
+                          Text(
+                            '${visibleSlots.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   const SizedBox(width: 12),
@@ -1221,20 +1230,53 @@ class _HabitCardState extends State<_HabitCard> {
                 ],
               ),
               if (slotCount > 1) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (var i = 0; i < slotCount; i++)
-                      _SlotCheckbox(
-                        label:
-                            formatSlotLabel(slotStartTime(h, i)),
-                        checked: visibleSlots.contains(i),
-                        color: color,
-                        onTap: () => _toggleSlot(i),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.12),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded,
+                              size: 13, color: color.withValues(alpha: 0.7)),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${visibleSlots.length} of $slotCount completed',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: color.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (var i = 0; i < slotCount; i++)
+                            _SlotCheckbox(
+                              label: formatSlotLabel(slotStartTime(h, i)),
+                              checked: visibleSlots.contains(i),
+                              color: color,
+                              onTap: () => _toggleSlot(i),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
               if (hasGoal) ...[
@@ -1334,28 +1376,40 @@ class _SlotCheckbox extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: checked ? color : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: checked ? color : scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: checked ? color : color.withValues(alpha: 0.5),
-            width: 1.5,
+            color: checked ? color : color.withValues(alpha: 0.3),
+            width: checked ? 1.5 : 1,
           ),
+          boxShadow: checked
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.25),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
               child: Icon(
                 checked
-                    ? Icons.check_rounded
-                    : Icons.access_time_rounded,
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 key: ValueKey<bool>(checked),
-                size: 14,
-                color: checked ? Colors.white : color,
+                size: 15,
+                color: checked ? Colors.white : color.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(width: 5),
@@ -1363,7 +1417,7 @@ class _SlotCheckbox extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: checked ? Colors.white : scheme.onSurface,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
