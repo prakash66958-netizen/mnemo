@@ -222,6 +222,13 @@ class HabitRepository {
 
     if (existing != null) {
       if (syncEnabled) {
+        // Soft-delete locally first so subsequent queries exclude this row
+        // immediately, then enqueue the Firestore tombstone in the background.
+        existing.deletedAt = DateTime.now();
+        existing.updatedAt = existing.deletedAt!;
+        await _isar.writeTxn(() async {
+          await _isar.habitCompletions.put(existing!);
+        });
         FirestoreSyncService.instance
             .enqueueDelete('habitCompletions', existing);
       } else {
