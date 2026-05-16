@@ -1168,3 +1168,54 @@ footer {
   .habits-copy { max-width: 100%; }
   .habits-phone { order: -1; }
 }
+
+/* ============================================
+   ENHANCED MOBILE STYLES
+   ============================================ */
+@media (max-width: 640px) {
+  .hero-title { font-size: clamp(2rem, 8vw, 3.5rem); }
+  .hero-sub { font-size: 15px; line-height: 1.5; }
+  .hero-facts { flex-wrap: wrap; gap: 12px; }
+  .fact { min-width: 80px; }
+  .hero-ctas { flex-direction: column; gap: 10px; }
+  .hero-ctas .btn { width: 100%; justify-content: center; }
+  
+  .section-title { font-size: clamp(1.5rem, 6vw, 2.5rem); }
+  .section-sub { font-size: 14px; }
+  
+  .pillars-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr !important; }
+  .feat, .feat.big, .feat.wide { grid-column: span 1 !important; }
+  
+  .cats-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cat b { font-size: 11px; }
+  .cat em { font-size: 10px; }
+  
+  .phones { gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 16px; }
+  .phone { scroll-snap-align: center; min-width: 260px; flex-shrink: 0; }
+  
+  .tech-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tech-card { padding: 12px; }
+  .tech-card b { font-size: 12px; }
+  
+  .cta-card { flex-direction: column; text-align: center; }
+  .cta-right { display: none; }
+  .cta-meta { justify-content: center; flex-wrap: wrap; }
+  
+  .scatter { gap: 8px; }
+  .scatter-item { font-size: 13px; padding: 6px 12px; }
+  
+  .habit-feats { gap: 12px; }
+  .hf { gap: 10px; }
+  .hf b { font-size: 13px; }
+  .hf em { font-size: 12px; }
+  
+  .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
+  .footer-links { flex-wrap: wrap; justify-content: center; }
+}
+
+@media (max-width: 400px) {
+  .cats-grid { grid-template-columns: repeat(2, 1fr); }
+  .tech-grid { grid-template-columns: 1fr; }
+  .nav-cta { display: none; }
+}
