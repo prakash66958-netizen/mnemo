@@ -2,6 +2,9 @@
     <!-- Internet access required for Google Sign-In and Firebase
          (Firestore cloud backup & sync). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Location access for the exact-pin location picker. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <!-- Post notifications (Android 13+) and schedule exact alarms so reminders
          fire reliably even when the phone is idle. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

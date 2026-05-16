@@ -57,6 +57,10 @@ dependencies:
   google_sign_in: ^6.2.2
   http: ^1.2.2
 
+  # Geolocation (exact pin for location picker)
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
+
   # Firebase (cloud backup & sync)
   firebase_core: ^4.8.0
   firebase_auth: ^6.5.0
