@@ -112,9 +112,19 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       final status = data['status'] as String? ?? '';
 
       if (status == 'REQUEST_DENIED') {
+        final errorMsg =
+            data['error_message'] as String? ?? 'API request denied';
         setState(() {
           _loading = false;
-          _error = 'Places API not enabled. Enable it in Google Cloud Console.';
+          _error = errorMsg;
+        });
+        return;
+      }
+
+      if (status != 'OK' && status != 'ZERO_RESULTS') {
+        setState(() {
+          _loading = false;
+          _error = 'Search error: $status';
         });
         return;
       }
