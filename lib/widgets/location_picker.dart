@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Google Maps Places API key. Same key used by Firebase — ensure the
 /// "Places API" is enabled in Google Cloud Console for this project.
-const _kMapsApiKey = 'AIzaSyCZKeP_RTnIiqbcU1z6GEVjtHVBPg3ztH4';
+const _kMapsApiKey = 'AIzaSyDzqpSB7tbPZ0RMGWKOai4YR3-n-C43Qvw';
 
 /// A bottom sheet that lets the user pick an exact location.
 ///
