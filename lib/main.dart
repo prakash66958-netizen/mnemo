@@ -69,10 +69,16 @@ Future<void> main() async {
   // block fails because FirestoreSyncService.init() is skipped and the
   // settings screen treats the boot error as a non-blocking banner.
   try {
-    if (Firebase.apps.isEmpty) {
+    // Firebase may already be initialized by the native Android layer via
+    // google-services.json. We try to init from Dart regardless and catch
+    // the duplicate-app error gracefully.
+    try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+    } on FirebaseException catch (e) {
+      if (e.code != 'duplicate-app') rethrow;
+      // duplicate-app is harmless — native layer already initialized Firebase.
     }
     // Clear any stale boot error from a previous failed init attempt.
     AppBootError.firebase = null;
