@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -18,9 +17,6 @@ import 'mnemo_chip.dart';
 ///              url (optional)
 ///              content text (2 lines)
 ///              [chip] [chip] [chip]
-///
-/// Screenshot items swap the solid colored badge for a gradient
-/// [ThumbBadge] (or the actual image if small enough).
 class MemoryCard extends StatelessWidget {
   const MemoryCard({
     super.key,
@@ -49,7 +45,6 @@ class MemoryCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final preview = item.content.trim().replaceAll(RegExp(r'\s+'), ' ');
     final timeStr = _formatTime(item.createdAt);
-    final isScreenshot = item.imagePath != null;
 
     final card = Material(
       color: scheme.surfaceContainerHigh,
@@ -63,7 +58,7 @@ class MemoryCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _leading(isScreenshot, category),
+              CategoryBadge(def: category),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -124,7 +119,7 @@ class MemoryCard extends StatelessWidget {
                       ),
                     if (preview.isNotEmpty && preview != '[Screenshot]')
                       Text(
-                        isScreenshot ? 'OCR: "$preview"' : preview,
+                        preview,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -181,29 +176,7 @@ class MemoryCard extends StatelessWidget {
     );
   }
 
-  Widget _leading(bool isScreenshot, CategoryDef category) {
-    if (!isScreenshot) return CategoryBadge(def: category);
-    final path = item.imagePath!;
-    final file = File(path);
-    // When the image exists we show a tiny thumbnail; otherwise fall back to
-    // the gradient placeholder from the mockup.
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: file.existsSync()
-          ? Image.file(
-              file,
-              width: 56,
-              height: 56,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const ThumbBadge(),
-            )
-          : const ThumbBadge(),
-    );
-  }
-
   String _labelFor(MemoryItem m, CategoryDef c) {
-    if (m.sourceType == 'photo') return 'Photo';
-    if (m.imagePath != null) return 'Screenshot';
     if (m.rawUrl != null && c.builtin == MemoryCategory.link) return 'Link';
     return c.label;
   }

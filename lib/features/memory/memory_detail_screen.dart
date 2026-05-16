@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -81,23 +80,6 @@ class MemoryDetailScreen extends ConsumerWidget {
                       _CategoryPill(category: category),
                     ],
                   ),
-                  if (item.imagePath != null) ...[
-                    const SizedBox(height: 14),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(DesignTokens.rCard),
-                      child: Image.file(
-                        File(item.imagePath!),
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          height: 140,
-                          color: scheme.surfaceContainerHighest,
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 14),
                   if (item.title != null && item.title!.trim().isNotEmpty) ...[
                     Padding(
@@ -149,15 +131,8 @@ class MemoryDetailScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // For screenshot/OCR memories, surface a dedicated "Copy
-                    // text" button so the user doesn't have to long-press-select
-                    // a possibly-long OCR result.
-                    if (item.imagePath != null &&
-                        item.content.trim().isNotEmpty &&
-                        item.content.trim() != '[Screenshot]') ...[
-                      const SizedBox(height: 10),
-                      _CopyTextButton(text: item.content),
-                    ],
+                  // For screenshot/OCR memories, the "Copy text" button is
+                    // no longer shown since image features have been removed.
                     if (item.rawUrl != null) ...[
                       const SizedBox(height: 8),
                       _OpenLinkRow(url: item.rawUrl!),
@@ -517,9 +492,9 @@ class _MetaRows extends StatelessWidget {
       case 'share':
         return 'Share sheet';
       case 'screenshot':
-        return 'Screenshot';
+        return 'Saved memory';
       case 'photo':
-        return 'Photo';
+        return 'Saved memory';
       default:
         return raw;
     }
@@ -691,52 +666,6 @@ class _OpenLinkRow extends StatelessWidget {
   }
 }
 
-/// Tappable "Copy text" row shown under screenshot/OCR memories.
-class _CopyTextButton extends StatelessWidget {
-  const _CopyTextButton({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () async {
-          await Clipboard.setData(ClipboardData(text: text));
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Copied scanned text'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.content_copy_rounded,
-                  size: 16, color: scheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Copy scanned text',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// Interactive checklist view shown in the detail screen.
 /// Users can check/uncheck items directly here.

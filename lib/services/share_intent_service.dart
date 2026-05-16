@@ -94,24 +94,13 @@ class ShareIntentService {
           forcedCategoryId: forcedCategoryId,
         );
       case SharedMediaType.image:
-        final file = p.file ?? File(p.payload);
-        if (!await file.exists()) {
-          mem = await MemoryRepository.instance.createTextMemory(
-            content: p.payload,
-            title: title,
-            source: MemorySource.share,
-            forcedCategory: forcedCategory,
-            forcedCategoryId: forcedCategoryId,
-          );
-        } else {
-          mem = await MemoryRepository.instance.createScreenshotMemory(
-            source: file,
-            sourceType: MemorySource.photo,
-            userTitle: title,
-            forcedCategory: forcedCategory,
-            forcedCategoryId: forcedCategoryId,
-          );
-        }
+        mem = await MemoryRepository.instance.createTextMemory(
+          content: 'Image shared: ${p.payload}',
+          title: title,
+          source: MemorySource.share,
+          forcedCategory: forcedCategory,
+          forcedCategoryId: forcedCategoryId,
+        );
       case SharedMediaType.video:
       case SharedMediaType.file:
         mem = await MemoryRepository.instance.createTextMemory(

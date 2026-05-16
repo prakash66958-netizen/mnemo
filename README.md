@@ -2,7 +2,7 @@
 
 **Your private second brain.** An offline-first universal memory inbox for Android.
 
-Mnemo catches screenshots, links, copied text, chat snippets, notes, ideas,
+Mnemo catches links, copied text, chat snippets, notes, ideas,
 and reminders — then classifies, tags, and remembers them entirely on-device.
 No cloud AI. No backend. No accounts. Nothing leaves your phone.
 
@@ -16,7 +16,7 @@ No cloud AI. No backend. No accounts. Nothing leaves your phone.
 ## Highlights
 
 - **Privacy first** — everything lives in an on-device Isar database.
-- **Fully offline** — OCR, classification, and reminders all run locally.
+- **Fully offline** — classification and reminders all run locally.
 - **Universal share target** — send anything from any Android app into Mnemo.
 - **Habit tracker** — daily habits with optional recurring reminders (e.g.
   "drink water every 2 hours from 8 AM to 10 PM").
@@ -37,13 +37,12 @@ No cloud AI. No backend. No accounts. Nothing leaves your phone.
 - **Flutter 3** (stable channel) + **Material 3**
 - **Riverpod 2** — state management
 - **Isar 3** — local NoSQL database
-- **Google ML Kit Text Recognition** — on-device OCR for screenshots
 - **flutter_local_notifications 18** — offline reminders and habit pings,
   with exact-alarm support, boot persistence, and a monochrome status-bar icon
 - **go_router 14** — declarative routing
 - **receive_sharing_intent** / **share_plus** — inbound + outbound share sheets
 - **url_launcher** — external link handoff with a scheme allowlist
-- **image_picker**, **path_provider**, **shared_preferences**, **intl**
+- **path_provider**, **shared_preferences**, **intl**
 
 ## Project structure
 
@@ -53,7 +52,7 @@ No cloud AI. No backend. No accounts. Nothing leaves your phone.
 ├── lib/              # Dart source
 │   ├── core/         # constants, theme, category enum + CategoryDef
 │   ├── models/       # Isar entities (MemoryItem, Reminder, Habit, HabitCompletion)
-│   ├── services/     # repositories + business logic (classifier, OCR,
+│   ├── services/     # repositories + business logic (classifier,
 │   │                 # notifications, share intent, share out, DB)
 │   ├── features/     # per-screen UI grouped by feature
 │   │   ├── inbox/
@@ -94,7 +93,7 @@ dart run build_runner build --delete-conflicting-outputs
 flutter run
 ```
 
-Android `minSdk` is 23 (required by Isar + ML Kit).
+Android `minSdk` is 23 (required by Isar).
 
 ## Building a release APK
 
@@ -118,15 +117,12 @@ Mnemo asks for the minimum required:
 - `VIBRATE` — reminder haptics
 
 No location, no contacts, no storage, no network. The app makes **zero**
-outbound network calls at runtime (plugin-level HTTP clients from ML Kit and
-url_launcher are included in the binary but the app doesn't invoke them).
+outbound network calls at runtime.
 
 ## Privacy
 
-- All memory content, screenshots, reminders, and habits are stored in
+- All memory content, reminders, and habits are stored in
   `getApplicationDocumentsDirectory()` — app-private sandboxed storage.
-- Screenshots are copied into an app-private folder; the original file
-  doesn't need to stay.
 - Backups are plain JSON files you export via the system share sheet
   (Drive, Gmail, Files, Bluetooth — your choice).
 - Link tapping validates the URL scheme against an allowlist

@@ -28,9 +28,6 @@ dependencies:
   timezone: ^0.10.0
   flutter_timezone: ^3.0.1
 
-  # OCR (on-device, offline)
-  google_mlkit_text_recognition: ^0.15.0
-
   # Routing
   go_router: ^14.6.2
 
@@ -39,7 +36,6 @@ dependencies:
   uuid: ^4.5.1
 
   # Media & sharing
-  image_picker: ^1.1.2
   receive_sharing_intent: ^1.8.1
   share_plus: ^10.1.0
   url_launcher: ^6.3.1

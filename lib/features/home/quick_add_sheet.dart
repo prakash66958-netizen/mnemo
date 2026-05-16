@@ -1,15 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../app.dart';
 import '../../core/category.dart';
 import '../../core/theme/design_tokens.dart';
-import '../../models/memory_item.dart';
 import '../../services/category_service.dart';
 import '../../services/classifier_service.dart';
 import '../../services/memory_repository.dart';
@@ -130,27 +127,6 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     }
   }
 
-  Future<void> _pickImage({required MemorySource sourceType}) async {
-    try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(source: ImageSource.gallery);
-      if (file == null) return;
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      final mem = await MemoryRepository.instance.createScreenshotMemory(
-        source: File(file.path),
-        sourceType: sourceType,
-      );
-      if (mounted) context.push('/memory/${mem.id}');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save image: $e')),
-        );
-      }
-    }
-  }
-
   Future<void> _pasteClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text ?? '';
@@ -159,23 +135,6 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     _ctrl.selection = TextSelection.fromPosition(
       TextPosition(offset: _ctrl.text.length),
     );
-  }
-
-  Future<void> _takePhoto() async {
-    try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(source: ImageSource.camera);
-      if (file == null) return;
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      final mem = await MemoryRepository.instance.createScreenshotMemory(
-        source: File(file.path),
-        sourceType: MemorySource.photo,
-      );
-      if (mounted) context.push('/memory/${mem.id}');
-    } catch (_) {
-      // Camera unavailable (no permission, no device): silently ignore.
-    }
   }
 
   @override
@@ -307,25 +266,6 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                       icon: Icons.content_paste_rounded,
                       label: 'Clipboard',
                       onTap: _pasteClipboard,
-                    ),
-                    const SizedBox(width: 8),
-                    _SourceTile(
-                      icon: Icons.photo_camera_rounded,
-                      label: 'Photo',
-                      onTap: _takePhoto,
-                    ),
-                    const SizedBox(width: 8),
-                    _SourceTile(
-                      icon: Icons.collections_rounded,
-                      label: 'Gallery',
-                      onTap: () => _pickImage(sourceType: MemorySource.photo),
-                    ),
-                    const SizedBox(width: 8),
-                    _SourceTile(
-                      icon: Icons.screenshot_rounded,
-                      label: 'Screenshot',
-                      onTap: () =>
-                          _pickImage(sourceType: MemorySource.screenshot),
                     ),
                     const SizedBox(width: 8),
                     _SourceTile(

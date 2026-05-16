@@ -28,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.bolt_rounded,
       title: 'Save anything in seconds',
       body:
-          'Notes, links, screenshots, chat messages — drop them into Mnemo '
+          'Notes, links, chat messages — drop them into Mnemo '
           'from anywhere with the share sheet.',
       accent: Color(0xFF4F46E5),
     ),

@@ -128,7 +128,7 @@ class RestoreFlow {
           // (those references can dangle if their targets aren't
           // restored yet) and the user's next edit through the
           // repository recomputes them.
-          final item = mapToMemory(data, existingImagePath: null);
+          final item = mapToMemory(data);
           await isar.writeTxn(() async {
             await isar.memoryItems.put(item);
           });
@@ -155,7 +155,7 @@ class RestoreFlow {
         // device-local fields (`imagePath`, `searchTokens`, `linkedIds`,
         // `reminderPromptHandled`). These mirror the merge in
         // `FirestoreSyncService._applyRemoteMemory`.
-        final merged = mapToMemory(data, existingImagePath: local.imagePath)
+        final merged = mapToMemory(data)
           ..id = local.id
           ..searchTokens = List<String>.from(local.searchTokens)
           ..linkedIds = List<int>.from(local.linkedIds)

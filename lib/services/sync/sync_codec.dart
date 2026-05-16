@@ -116,20 +116,19 @@ Map<String, dynamic> memoryToMap(
 
 /// Decodes a Firestore document body into a `MemoryItem`.
 ///
-/// `imagePath` defaults to `null` when no [existingImagePath] is supplied
-/// (Requirement 9.4 / Property 13). `linkedIds` is left empty — the caller
+/// `imagePath` is always set to `null` (image features removed).
+/// `linkedIds` is left empty — the caller
 /// resolves `map['linkedCloudIds']` to local Isar primary keys after decode.
 /// `searchTokens` is left empty so it is recomputed on the next insert path.
 MemoryItem mapToMemory(
-  Map<String, dynamic> map, {
-  String? existingImagePath,
-}) {
+  Map<String, dynamic> map,
+) {
   return MemoryItem()
     ..cloudId = (map['cloudId'] as String?) ?? ''
     ..title = map['title'] as String?
     ..content = (map['content'] as String?) ?? ''
     ..rawUrl = map['rawUrl'] as String?
-    ..imagePath = existingImagePath
+    ..imagePath = null
     ..sourceType = (map['sourceType'] as String?) ?? ''
     ..categoryId = (map['categoryId'] as String?) ?? ''
     ..tags = _toStringList(map['tags'])

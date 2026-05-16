@@ -11,11 +11,8 @@ class ShareOutService {
   ShareOutService._();
   static final ShareOutService instance = ShareOutService._();
 
-  /// Shares a memory's content (and image, if any) to another app.
+  /// Shares a memory's content to another app as text.
   Future<ShareResult> shareMemory(MemoryItem m) async {
-    final imagePath = m.imagePath;
-    final hasImage = imagePath != null && await File(imagePath).exists();
-
     // Build the body with bold title (WhatsApp/Telegram *bold* syntax)
     final titlePart = (m.title != null && m.title!.trim().isNotEmpty)
         ? '*${m.title!.trim()}*\n\n'
@@ -31,13 +28,6 @@ class ShareOutService {
         ? m.title!
         : (m.content.length > 60 ? m.content.substring(0, 60) : m.content);
 
-    if (hasImage) {
-      return Share.shareXFiles(
-        [XFile(imagePath)],
-        text: body,
-        subject: subject,
-      );
-    }
     return Share.share(body, subject: subject);
   }
 

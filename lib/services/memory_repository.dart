@@ -2,8 +2,6 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:isar/isar.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/category.dart';
@@ -15,7 +13,6 @@ import 'classifier_service.dart';
 import 'database_service.dart';
 import 'firestore_sync_service.dart';
 import 'notification_service.dart';
-import 'ocr_service.dart';
 import 'promise_detector.dart';
 import 'settings_service.dart';
 
@@ -107,72 +104,7 @@ class MemoryRepository {
     return item;
   }
 
-  Future<MemoryItem> createScreenshotMemory({
-    required File source,
-    String? userTitle,
-    MemorySource sourceType = MemorySource.screenshot,
-    MemoryCategory? forcedCategory,
-    String? forcedCategoryId,
-  }) async {
-    // Copy the image into our app's documents so it survives even if the
-    // user deletes the original. Keeps us fully self-contained. Both
-    // screenshot and photo memories share this folder — the distinction is
-    // only in sourceType, so the disk layout stays simple.
-    final appDir = await getApplicationDocumentsDirectory();
-    final shotsDir = Directory(p.join(appDir.path, 'screenshots'));
-    if (!await shotsDir.exists()) await shotsDir.create(recursive: true);
-    final fileName =
-        'shot_${DateTime.now().millisecondsSinceEpoch}${p.extension(source.path)}';
-    final copied = await source.copy(p.join(shotsDir.path, fileName));
 
-    // Run OCR on the copied file.
-    final ocrText = await OcrService.instance.extractText(copied.path);
-
-    // For photos (vs screenshots), keep the body empty when OCR finds nothing
-    // so the card reads as "Photo" rather than "[Screenshot]".
-    final isPhoto = sourceType == MemorySource.photo;
-    final content = ocrText.isEmpty
-        ? (isPhoto ? '' : '[Screenshot]')
-        : ocrText;
-
-    final detection = PromiseDetector.instance.detect(content);
-    // Resolve the category with the same precedence rules as
-    // [createTextMemory]: explicit id → explicit enum → auto-detect.
-    final autoCategory = detection.hasPromise
-        ? MemoryCategory.promise
-        : (content.trim().isEmpty
-            ? MemoryCategory.note
-            : ClassifierService.instance.classify(content));
-    final categoryId = forcedCategoryId ??
-        forcedCategory?.id ??
-        autoCategory.id;
-
-    final tags = ClassifierService.instance
-        .extractTags(content, MemoryCategory.fromId(categoryId));
-    final tokens = ClassifierService.instance
-        .tokenize(content, title: userTitle, tags: tags);
-
-    final now = DateTime.now();
-    final item = MemoryItem()
-      ..cloudId = _uuid.v4()
-      ..title = userTitle
-      ..content = content
-      ..imagePath = copied.path
-      ..rawUrl = _extractUrl(content)
-      ..sourceType = sourceType.name
-      ..categoryId = categoryId
-      ..tags = tags
-      ..searchTokens = tokens
-      ..createdAt = now
-      ..updatedAt = now
-      ..hasPromise = detection.hasPromise;
-
-    await _isar.writeTxn(() async {
-      await _isar.memoryItems.put(item);
-    });
-    await _emitSync(_MutationKind.upsert, item);
-    return item;
-  }
 
   // ---------------------------------------------------------------------------
   // Mutations
@@ -228,7 +160,6 @@ class MemoryRepository {
     }
 
     // Signed-out path: hard-delete locally as before.
-    final imgPath = item.imagePath;
     // Cascade: remove reminders attached to this memory.
     await _isar.writeTxn(() async {
       final rems = await _isar.reminders
@@ -244,12 +175,6 @@ class MemoryRepository {
           .deleteAll();
       await _isar.memoryItems.delete(item.id);
     });
-    if (imgPath != null) {
-      final f = File(imgPath);
-      if (await f.exists()) {
-        try { await f.delete(); } catch (_) {}
-      }
-    }
   }
 
   Future<void> markReminderPromptHandled(MemoryItem item) async {

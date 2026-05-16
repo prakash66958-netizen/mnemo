@@ -246,7 +246,7 @@ class _InboxBody extends StatelessWidget {
                 icon: Icons.inbox_rounded,
                 title: 'Your inbox is empty',
                 subtitle:
-                    'Tap + below to capture a note, link or screenshot. You '
+                    'Tap + below to capture a note or link. You '
                     'can also share anything from another app into Mnemo.',
               ),
             ),

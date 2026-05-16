@@ -725,7 +725,7 @@ class FirestoreSyncService {
       //  * linkedIds: empty. The referenced parents may not be restored
       //    yet; the cross-link is recomputed when the user next edits
       //    a memory through the repository.
-      final inserted = mapToMemory(data, existingImagePath: null);
+      final inserted = mapToMemory(data);
       await isar.writeTxn(() async {
         await isar.memoryItems.put(inserted);
       });
@@ -743,7 +743,7 @@ class FirestoreSyncService {
     if (result == _CompareResult.localWins) return;
 
     // Remote wins: overwrite preserving Isar pk and device-local fields.
-    final merged = mapToMemory(data, existingImagePath: local.imagePath)
+    final merged = mapToMemory(data)
       ..id = local.id
       // searchTokens are recomputed by the repository on the next write;
       // until then we preserve the existing tokens so search keeps working.
