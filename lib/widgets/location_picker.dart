@@ -1,14 +1,18 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 /// A bottom sheet that lets the user pick an exact location.
 ///
 /// Supports two flows:
 /// 1. "Use current location" — gets GPS coordinates for an exact pin.
-/// 2. Type a place name — geocodes it to get exact lat/lng coordinates
-///    so the Maps link pins the precise spot, not a search results page.
+/// 2. Type a place name — uses OpenStreetMap Nominatim to search for
+///    businesses, POIs, and addresses, returning multiple results with
+///    exact lat/lng coordinates.
 ///
 /// Returns a [LocationResult] or null if the user cancelled.
 Future<LocationResult?> showLocationPicker(BuildContext context,
@@ -62,8 +66,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
   }
 
   /// Builds an exact-pin Google Maps URL using coordinates.
-  String _buildPinUrl(double lat, double lng, String label) {
-    // This format drops a pin at the exact coordinates.
+  String _buildPinUrl(double lat, double lng) {
     return 'https://www.google.com/maps?q=$lat,$lng';
   }
 
@@ -73,7 +76,9 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     return 'https://www.google.com/maps/search/?api=1&query=$encoded';
   }
 
-  /// Geocode the typed text to get coordinate suggestions.
+  /// Search using OpenStreetMap Nominatim API.
+  /// Handles business names, POIs, addresses — much better than the native
+  /// geocoder which only works for street addresses.
   Future<void> _search() async {
     final query = _ctrl.text.trim();
     if (query.isEmpty) return;
@@ -86,29 +91,49 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     });
 
     try {
-      final locations = await locationFromAddress(query);
+      final encoded = Uri.encodeComponent(query);
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=$encoded&format=json&limit=8&addressdetails=1',
+      );
+
+      final response = await http.get(url, headers: {
+        'User-Agent': 'Mnemo-App/2.9 (Android)',
+        'Accept': 'application/json',
+      });
+
+      if (!mounted) return;
+
+      if (response.statusCode != 200) {
+        setState(() {
+          _loading = false;
+          _error = 'Search failed. Please try again.';
+        });
+        return;
+      }
+
+      final List<dynamic> data = jsonDecode(response.body);
       final results = <_GeocodedPlace>[];
 
-      for (final loc in locations.take(5)) {
-        // Reverse geocode to get a readable address for each result.
-        String address = query;
-        try {
-          final placemarks =
-              await placemarkFromCoordinates(loc.latitude, loc.longitude);
-          if (placemarks.isNotEmpty) {
-            address = _formatPlacemark(placemarks.first, query);
-          }
-        } catch (_) {
-          // Keep the original query as the name.
-        }
+      for (final item in data) {
+        final lat = double.tryParse(item['lat']?.toString() ?? '');
+        final lng = double.tryParse(item['lon']?.toString() ?? '');
+        if (lat == null || lng == null) continue;
+
+        final displayName = item['display_name'] as String? ?? query;
+        // Use a shorter name: take the first 2-3 parts of the display name.
+        final parts = displayName.split(', ');
+        final shortName = parts.take(3).join(', ');
+
         results.add(_GeocodedPlace(
-          name: address,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
+          name: shortName,
+          fullAddress: displayName,
+          latitude: lat,
+          longitude: lng,
+          type: item['type'] as String? ?? '',
         ));
       }
 
-      if (!mounted) return;
       setState(() {
         _suggestions = results;
         _loading = false;
@@ -120,32 +145,9 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Could not find location. Check your connection.';
+        _error = 'Could not search. Check your internet connection.';
       });
     }
-  }
-
-  String _formatPlacemark(Placemark p, String fallback) {
-    final parts = <String>[];
-    if (p.name != null && p.name!.isNotEmpty && p.name != p.postalCode) {
-      parts.add(p.name!);
-    }
-    if (p.subLocality != null && p.subLocality!.isNotEmpty) {
-      parts.add(p.subLocality!);
-    }
-    if (p.locality != null && p.locality!.isNotEmpty) {
-      parts.add(p.locality!);
-    }
-    if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) {
-      parts.add(p.administrativeArea!);
-    }
-    if (parts.isEmpty) return fallback;
-    // Deduplicate consecutive entries.
-    final deduped = <String>[parts.first];
-    for (var i = 1; i < parts.length; i++) {
-      if (parts[i] != parts[i - 1]) deduped.add(parts[i]);
-    }
-    return deduped.join(', ');
   }
 
   /// Use the device's current GPS location.
@@ -156,7 +158,6 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     });
 
     try {
-      // Check permissions.
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -199,7 +200,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
 
       final result = LocationResult(
         name: name,
-        mapsUrl: _buildPinUrl(position.latitude, position.longitude, name),
+        mapsUrl: _buildPinUrl(position.latitude, position.longitude),
         latitude: position.latitude,
         longitude: position.longitude,
       );
@@ -213,6 +214,28 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     }
   }
 
+  String _formatPlacemark(Placemark p, String fallback) {
+    final parts = <String>[];
+    if (p.name != null && p.name!.isNotEmpty && p.name != p.postalCode) {
+      parts.add(p.name!);
+    }
+    if (p.subLocality != null && p.subLocality!.isNotEmpty) {
+      parts.add(p.subLocality!);
+    }
+    if (p.locality != null && p.locality!.isNotEmpty) {
+      parts.add(p.locality!);
+    }
+    if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) {
+      parts.add(p.administrativeArea!);
+    }
+    if (parts.isEmpty) return fallback;
+    final deduped = <String>[parts.first];
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i] != parts[i - 1]) deduped.add(parts[i]);
+    }
+    return deduped.join(', ');
+  }
+
   void _selectPlace(_GeocodedPlace place) {
     setState(() => _selectedPlace = place);
   }
@@ -222,7 +245,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       final p = _selectedPlace!;
       Navigator.of(context).pop(LocationResult(
         name: p.name,
-        mapsUrl: _buildPinUrl(p.latitude, p.longitude, p.name),
+        mapsUrl: _buildPinUrl(p.latitude, p.longitude),
         latitude: p.latitude,
         longitude: p.longitude,
       ));
@@ -241,7 +264,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     String url;
     if (_selectedPlace != null) {
       final p = _selectedPlace!;
-      url = _buildPinUrl(p.latitude, p.longitude, p.name);
+      url = _buildPinUrl(p.latitude, p.longitude);
     } else {
       final name = _ctrl.text.trim();
       if (name.isEmpty) return;
@@ -317,7 +340,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                       autofocus: true,
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
-                        hintText: 'e.g. Cinepolis, Mumbai',
+                        hintText: 'e.g. PVR Cinemas, Cinepolis, etc.',
                         prefixIcon: const Icon(Icons.search_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -360,11 +383,11 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
               if (_suggestions.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 180),
+                  constraints: const BoxConstraints(maxHeight: 200),
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: _suggestions.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (_, i) {
                       final place = _suggestions[i];
                       final selected = _selectedPlace == place;
@@ -390,12 +413,15 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          '${place.latitude.toStringAsFixed(4)}, '
-                          '${place.longitude.toStringAsFixed(4)}',
+                          place.fullAddress.length > 60
+                              ? '${place.fullAddress.substring(0, 57)}...'
+                              : place.fullAddress,
                           style: TextStyle(
                             fontSize: 11,
                             color: scheme.onSurfaceVariant,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         onTap: () => _selectPlace(place),
                       );
@@ -407,7 +433,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
               // Preview button.
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _ctrl,
-                builder: (_, val, __) {
+                builder: (_, val, _) {
                   final hasContent =
                       val.text.trim().isNotEmpty || _selectedPlace != null;
                   return OutlinedButton.icon(
@@ -430,7 +456,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                   Expanded(
                     child: ValueListenableBuilder<TextEditingValue>(
                       valueListenable: _ctrl,
-                      builder: (_, val, __) {
+                      builder: (_, val, _) {
                         final canConfirm = _selectedPlace != null ||
                             val.text.trim().isNotEmpty;
                         return FilledButton(
@@ -455,10 +481,14 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
 class _GeocodedPlace {
   const _GeocodedPlace({
     required this.name,
+    required this.fullAddress,
     required this.latitude,
     required this.longitude,
+    required this.type,
   });
   final String name;
+  final String fullAddress;
   final double latitude;
   final double longitude;
+  final String type;
 }
