@@ -76,9 +76,9 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     return 'https://www.google.com/maps/search/?api=1&query=$encoded';
   }
 
-  /// Search using OpenStreetMap Nominatim API.
-  /// Handles business names, POIs, addresses — much better than the native
-  /// geocoder which only works for street addresses.
+  /// Search using OpenStreetMap Nominatim API + Photon fallback.
+  /// Handles business names, POIs, addresses. Photon (powered by OSM/Komoot)
+  /// tends to give better results for brand names in India.
   Future<void> _search() async {
     final query = _ctrl.text.trim();
     if (query.isEmpty) return;
@@ -91,54 +91,20 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     });
 
     try {
-      final encoded = Uri.encodeComponent(query);
-      final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/search'
-        '?q=$encoded&format=json&limit=8&addressdetails=1',
-      );
-
-      final response = await http.get(url, headers: {
-        'User-Agent': 'Mnemo-App/2.9 (Android)',
-        'Accept': 'application/json',
-      });
+      // Try Photon first (better for POIs/businesses).
+      var results = await _searchPhoton(query);
+      // Fallback to Nominatim if Photon returns nothing.
+      if (results.isEmpty) {
+        results = await _searchNominatim(query);
+      }
 
       if (!mounted) return;
-
-      if (response.statusCode != 200) {
-        setState(() {
-          _loading = false;
-          _error = 'Search failed. Please try again.';
-        });
-        return;
-      }
-
-      final List<dynamic> data = jsonDecode(response.body);
-      final results = <_GeocodedPlace>[];
-
-      for (final item in data) {
-        final lat = double.tryParse(item['lat']?.toString() ?? '');
-        final lng = double.tryParse(item['lon']?.toString() ?? '');
-        if (lat == null || lng == null) continue;
-
-        final displayName = item['display_name'] as String? ?? query;
-        // Use a shorter name: take the first 2-3 parts of the display name.
-        final parts = displayName.split(', ');
-        final shortName = parts.take(3).join(', ');
-
-        results.add(_GeocodedPlace(
-          name: shortName,
-          fullAddress: displayName,
-          latitude: lat,
-          longitude: lng,
-          type: item['type'] as String? ?? '',
-        ));
-      }
-
       setState(() {
         _suggestions = results;
         _loading = false;
         if (results.isEmpty) {
-          _error = 'No locations found for "$query"';
+          _error = 'No locations found for "$query". '
+              'Try adding a city name (e.g. "PVR Guwahati").';
         }
       });
     } catch (e) {
@@ -148,6 +114,92 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
         _error = 'Could not search. Check your internet connection.';
       });
     }
+  }
+
+  /// Photon geocoder by Komoot — good for POI/business search.
+  Future<List<_GeocodedPlace>> _searchPhoton(String query) async {
+    final encoded = Uri.encodeComponent(query);
+    final url = Uri.parse(
+      'https://photon.komoot.io/api/?q=$encoded&limit=8',
+    );
+    final response = await http.get(url, headers: {
+      'Accept': 'application/json',
+    });
+    if (response.statusCode != 200) return [];
+
+    final data = jsonDecode(response.body);
+    final features = data['features'] as List<dynamic>? ?? [];
+    final results = <_GeocodedPlace>[];
+
+    for (final feature in features) {
+      final geometry = feature['geometry'];
+      final props = feature['properties'] as Map<String, dynamic>? ?? {};
+      if (geometry == null) continue;
+
+      final coords = geometry['coordinates'] as List<dynamic>?;
+      if (coords == null || coords.length < 2) continue;
+
+      final lng = (coords[0] as num).toDouble();
+      final lat = (coords[1] as num).toDouble();
+
+      // Build a readable name from properties.
+      final name = props['name'] as String? ?? query;
+      final city = props['city'] as String? ?? props['county'] as String? ?? '';
+      final state = props['state'] as String? ?? '';
+      final country = props['country'] as String? ?? '';
+
+      final nameParts = <String>[name];
+      if (city.isNotEmpty && city != name) nameParts.add(city);
+      if (state.isNotEmpty && state != city) nameParts.add(state);
+
+      final fullParts = <String>[...nameParts];
+      if (country.isNotEmpty) fullParts.add(country);
+
+      results.add(_GeocodedPlace(
+        name: nameParts.join(', '),
+        fullAddress: fullParts.join(', '),
+        latitude: lat,
+        longitude: lng,
+        type: props['osm_value'] as String? ?? '',
+      ));
+    }
+    return results;
+  }
+
+  /// Nominatim fallback — better for exact addresses.
+  Future<List<_GeocodedPlace>> _searchNominatim(String query) async {
+    final encoded = Uri.encodeComponent(query);
+    final url = Uri.parse(
+      'https://nominatim.openstreetmap.org/search'
+      '?q=$encoded&format=json&limit=8&addressdetails=1',
+    );
+    final response = await http.get(url, headers: {
+      'User-Agent': 'Mnemo-App/2.9 (Android)',
+      'Accept': 'application/json',
+    });
+    if (response.statusCode != 200) return [];
+
+    final List<dynamic> data = jsonDecode(response.body);
+    final results = <_GeocodedPlace>[];
+
+    for (final item in data) {
+      final lat = double.tryParse(item['lat']?.toString() ?? '');
+      final lng = double.tryParse(item['lon']?.toString() ?? '');
+      if (lat == null || lng == null) continue;
+
+      final displayName = item['display_name'] as String? ?? query;
+      final parts = displayName.split(', ');
+      final shortName = parts.take(3).join(', ');
+
+      results.add(_GeocodedPlace(
+        name: shortName,
+        fullAddress: displayName,
+        latitude: lat,
+        longitude: lng,
+        type: item['type'] as String? ?? '',
+      ));
+    }
+    return results;
   }
 
   /// Use the device's current GPS location.

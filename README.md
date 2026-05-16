@@ -1,6 +1,6 @@
 # Mnemo
 
-**Your private second brain.** An offline-first universal memory inbox for Android.
+**Your private second brain.** A universal memory inbox for Android.
 
 Mnemo catches links, copied text, chat snippets, notes, ideas,
 and reminders — then classifies, tags, and remembers them entirely on-device.
@@ -16,7 +16,7 @@ No cloud AI. No backend. No accounts. Nothing leaves your phone.
 ## Highlights
 
 - **Privacy first** — everything lives in an on-device Isar database.
-- **Fully offline** — classification and reminders all run locally.
+- **Fully local** — classification and reminders run on-device.
 - **Universal share target** — send anything from any Android app into Mnemo.
 - **Habit tracker** — daily habits with optional recurring reminders (e.g.
   "drink water every 2 hours from 8 AM to 10 PM").
